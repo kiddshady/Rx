@@ -1,0 +1,306 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rx — lo propio de esta app
+
+   Todo lo genérico ya está en `ox-`. Acá va solo lo que Onyx no tiene: la
+   cerradura, la vista previa de la hoja, y los dos o tres layouts de dominio.
+   Prefijo `rx-`, para que se note de un vistazo qué es del framework y qué es
+   de la app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cerradura ───────────────────────────────────────────────────────────── */
+
+.rx-cerradura {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  background: var(--ox-bg);
+  animation: rx-cerradura-entra var(--ox-t-4) var(--ox-ease) both;
+}
+.rx-cerradura[hidden] { display: none; }
+.rx-cerradura[data-state="closing"] {
+  animation: rx-cerradura-sale var(--ox-t-3) var(--ox-ease-in) both;
+}
+
+@keyframes rx-cerradura-entra { from { opacity: 0 } to { opacity: 1 } }
+@keyframes rx-cerradura-sale {
+  from { opacity: 1; transform: scale(1) }
+  to   { opacity: 0; transform: scale(1.015) }
+}
+
+.rx-cerradura__caja {
+  width: min(400px, calc(100vw - var(--ox-8)));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ox-3);
+  animation: rx-caja-sube var(--ox-t-4) var(--ox-ease) both .06s;
+}
+@keyframes rx-caja-sube {
+  from { opacity: 0; transform: translateY(10px) }
+  to   { opacity: 1; transform: none }
+}
+
+/* `color` además de `stroke`: la cabeza de la serpiente es un punto macizo con
+   fill="currentColor", y sin esto tomaría el color de texto heredado, que no
+   es el mismo que el del trazo. */
+.rx-cerradura__marca {
+  /* Un poco más grande y con más trazo que el splash: acá la marca está sola
+     en el medio de una pantalla vacía, y a 40/1.1 se veía enclenque. */
+  width: 46px; height: 46px;
+  stroke: var(--ox-text);
+  color: var(--ox-text);
+  fill: none;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: var(--ox-1);
+}
+
+.rx-cerradura__titulo {
+  font-size: var(--ox-fs-20);
+  font-weight: var(--ox-w-semi);
+  letter-spacing: var(--ox-track-tight);
+  color: var(--ox-text);
+}
+.rx-cerradura__sub {
+  font-size: var(--ox-fs-13);
+  color: var(--ox-text-3);
+  text-align: center;
+  line-height: 1.55;
+  margin-bottom: var(--ox-2);
+  max-width: 34ch;
+}
+
+.rx-cerradura__form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ox-3);
+}
+
+/* El aviso de "si la perdés, no hay forma de recuperar los datos". Va una sola
+   vez, cuando se crea la contraseña, y tiene que leerse — por eso ocupa lugar
+   en vez de ser una notita gris al pie. */
+.rx-aviso {
+  display: flex;
+  gap: var(--ox-2);
+  padding: var(--ox-3);
+  border-radius: var(--ox-r-md);
+  background: var(--ox-s2);
+  box-shadow: var(--ox-hairline);
+  font-size: var(--ox-fs-12);
+  line-height: 1.55;
+  color: var(--ox-text-2);
+  transition: var(--tr-surface);
+}
+.rx-aviso .ox-icon { flex: none; margin-top: 1px; color: var(--ox-text-3); }
+.rx-aviso strong { color: var(--ox-text); font-weight: var(--ox-w-semi); }
+
+/* El error de contraseña. Aparece y desaparece con transición, y no empuja el
+   formulario: ocupa su lugar siempre. */
+.rx-cerradura__error {
+  min-height: 18px;
+  font-size: var(--ox-fs-12);
+  color: var(--ox-danger);
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--ox-t-2) var(--ox-ease);
+}
+.rx-cerradura__error.is-visible { opacity: 1; }
+
+.rx-cerradura__pie {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ox-2);
+  font-size: var(--ox-fs-12);
+  color: var(--ox-text-3);
+}
+
+/* ── Vista previa de la hoja ─────────────────────────────────────────────── */
+
+.rx-previa {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--ox-r-lg);
+  background: var(--ox-sunken);
+  box-shadow: var(--ox-hairline);
+  overflow: hidden;
+}
+
+.rx-previa__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ox-2);
+  padding: var(--ox-2) var(--ox-3);
+  font-size: var(--ox-fs-11);
+  letter-spacing: var(--ox-track-caps);
+  text-transform: uppercase;
+  color: var(--ox-text-3);
+  box-shadow: inset 0 -1px 0 var(--ox-line);
+}
+
+/* El papel corta contra el borde del panel arriba y abajo (el head y el propio
+   redondeo), así que NO lleva esfumado: la línea ya es el límite. */
+.rx-previa__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ox-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ox-4);
+}
+
+/* `zoom` y no `transform: scale()`: zoom reflowea de verdad, así que el
+   contenedor toma el alto real de la hoja escalada y el scroll da lo que tiene
+   que dar. Con scale() habría que compensar el alto a mano y siempre queda mal
+   en algún tamaño de ventana. */
+.rx-previa__papel {
+  zoom: var(--rx-zoom, .78);
+  flex: none;
+  box-shadow: 0 8px 28px rgb(0 0 0 / .45);
+  transition: zoom var(--ox-t-2) var(--ox-ease);
+}
+
+/* ── Layout de la receta ─────────────────────────────────────────────────── */
+
+.rx-receta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: var(--ox-5);
+  min-height: 0;
+  flex: 1;
+}
+@media (max-width: 1180px) {
+  .rx-receta { grid-template-columns: minmax(0, 1fr); }
+  .rx-receta__previa { display: none; }
+}
+
+.rx-receta__form {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ox-4);
+}
+.rx-receta__previa { min-width: 0; display: flex; }
+
+/* Un medicamento de la receta. */
+.rx-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ox-3);
+  padding: var(--ox-3);
+  border-radius: var(--ox-r-md);
+  background: var(--ox-s2);
+  box-shadow: var(--ox-hairline);
+  transition: var(--tr-surface);
+  animation: rx-item-entra var(--ox-t-3) var(--ox-ease) both;
+}
+@keyframes rx-item-entra {
+  from { opacity: 0; transform: translateY(-6px) }
+  to   { opacity: 1; transform: none }
+}
+.rx-item[data-state="closing"] {
+  animation: rx-item-sale var(--ox-t-2) var(--ox-ease-in) both;
+}
+@keyframes rx-item-sale {
+  from { opacity: 1; transform: none }
+  to   { opacity: 0; transform: translateY(-6px) }
+}
+
+.rx-item__campos { display: flex; flex-direction: column; gap: var(--ox-2); min-width: 0; }
+.rx-item__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--ox-2);
+}
+.rx-item__acciones { display: flex; flex-direction: column; gap: var(--ox-1); }
+
+/* ── Ficha del paciente ──────────────────────────────────────────────────── */
+
+.rx-ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ox-3);
+}
+.rx-ficha--ancho { grid-template-columns: minmax(0, 1fr); }
+
+/* Alergias: es lo único de la ficha que tiene que saltar a la vista antes de
+   recetar, así que se sale de la escalera de grises. El rojo acá NO es un
+   fallo del sistema, es una advertencia clínica — que es el otro uso legítimo
+   del único color fuerte de la app. */
+.rx-alergias {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ox-2);
+  padding: var(--ox-2) var(--ox-3);
+  border-radius: var(--ox-r-md);
+  background: var(--ox-danger-wash);
+  box-shadow: inset 0 0 0 1px var(--ox-danger-ring);
+  color: var(--ox-text);
+  font-size: var(--ox-fs-13);
+  transition: var(--tr-surface);
+}
+.rx-alergias .ox-icon { flex: none; margin-top: 2px; color: var(--ox-danger); }
+.rx-alergias__rotulo {
+  font-size: var(--ox-fs-11);
+  letter-spacing: var(--ox-track-caps);
+  text-transform: uppercase;
+  color: var(--ox-danger);
+  margin-bottom: 2px;
+}
+
+/* El campo de alergias cuando tiene algo cargado. Mismo lenguaje que el cartel
+   de la receta, pero sobre el control que se edita: un solo lugar. */
+.rx-campo-alerta .ox-field__label {
+  color: var(--ox-danger);
+  font-size: var(--ox-fs-11);
+  letter-spacing: var(--ox-track-caps);
+  text-transform: uppercase;
+}
+.rx-campo-alerta .ox-textarea {
+  background: var(--ox-danger-wash);
+  box-shadow: inset 0 0 0 1px var(--ox-danger-ring);
+}
+.rx-campo-alerta .ox-textarea:focus {
+  box-shadow: inset 0 0 0 1px var(--ox-danger), 0 0 0 3px var(--ox-danger-wash);
+}
+
+/* ── Evoluciones ─────────────────────────────────────────────────────────── */
+
+.rx-evolucion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ox-3);
+  padding: var(--ox-3) 0;
+}
+.rx-evolucion + .rx-evolucion { box-shadow: inset 0 1px 0 var(--ox-line); }
+
+.rx-evolucion__fecha {
+  min-width: 88px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ox-fs-12);
+  color: var(--ox-text-3);
+}
+.rx-evolucion__cuerpo { min-width: 0; display: flex; flex-direction: column; gap: var(--ox-1); }
+.rx-evolucion__motivo { font-weight: var(--ox-w-medium); color: var(--ox-text); }
+.rx-evolucion__notas { color: var(--ox-text-2); white-space: pre-wrap; line-height: 1.6; }
+.rx-evolucion__signos { display: flex; flex-wrap: wrap; gap: var(--ox-1) var(--ox-3); }
+
+/* ── Detalles chicos ─────────────────────────────────────────────────────── */
+
+/* Una fila de campos que tiene que caber en una línea y repartirse parejo. */
+.rx-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--ox-3);
+}
+.rx-fila--dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.rx-buscador { max-width: 340px; }

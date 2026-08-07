@@ -1,0 +1,12 @@
+/* Solo para el documento de impresión. NO se carga en la app: acá el fondo es
+   blanco y eso adentro del shell oscuro sería un desastre.
+
+   El margen lo pone `@page`, no la hoja: así `.rx-hoja` mide exactamente el
+   área imprimible y coincide, milímetro a milímetro, con la vista previa. */
+
+@page { size: A5; margin: 8mm; }
+
+html, body { margin: 0; padding: 0; background: #fff; }
+
+/* Original y duplicado: una hoja por página. */
+.rx-hoja + .rx-hoja { break-before: page; page-break-before: always; }

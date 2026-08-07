@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<!-- CSP estricta: sin conexiones externas, sin eval. Una app con historias
+     clínicas adentro no tiene ningún motivo para hablar con la red. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+<title>Rx</title>
+
+<link rel="stylesheet" href="./css/fonts.css">
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/motion.css">
+<link rel="stylesheet" href="./css/shell.css">
+<link rel="stylesheet" href="./css/controls.css">
+<link rel="stylesheet" href="./css/surfaces.css">
+<link rel="stylesheet" href="./css/overlays.css">
+<link rel="stylesheet" href="./css/hoja.css">
+<link rel="stylesheet" href="./css/rx.css">
+
+<style>
+  /* Boot splash: réplica exacta del primer frame. Pinta ANTES de que cargue
+     ningún módulo, así no hay un solo instante sin identidad en pantalla.
+     El color tiene que ser el mismo backgroundColor de la BrowserWindow —
+     literal, no una variable: los tokens todavía podrían no haber cargado. */
+  #boot-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    background: #0a0b0d;
+    transition: opacity .34s cubic-bezier(.16, 1, .3, 1);
+  }
+  /* `color` además de `stroke`: la cabeza de la serpiente es un punto macizo
+     con fill="currentColor", y sin esto tomaría el color heredado del body —
+     o sea negro sobre negro, invisible. */
+  #boot-splash svg { width: 46px; height: 46px; stroke: #f2f4f7; color: #f2f4f7; fill: none;
+                     stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+  /* La marca se DIBUJA, no aparece: primero el bastón, después la serpiente
+     enroscándose, y al final asoma la cabeza. */
+  #boot-splash path { stroke-dasharray: 34; stroke-dashoffset: 34;
+                      animation: boot-draw .72s cubic-bezier(.16,1,.3,1) forwards; }
+  #boot-splash path:nth-child(2) { animation-delay: .06s; }
+  #boot-splash path:nth-child(3) { animation-delay: .18s; }
+  #boot-splash circle { opacity: 0;
+                        animation: boot-cabeza .28s cubic-bezier(.16,1,.3,1) .66s forwards; }
+  @keyframes boot-draw { to { stroke-dashoffset: 0 } }
+  @keyframes boot-cabeza { to { opacity: 1 } }
+</style>
+
+<div id="boot-splash">
+  <!-- Bastón de Asclepio. El asta se corta donde la serpiente pasa por
+       delante: ese hueco es lo que la hace parecer enroscada y no apoyada. -->
+  <svg viewBox="0 0 16 16">
+    <path d="M8 1.9V7.9"/>
+    <path d="M8 9.6V14.1"/>
+    <path d="M8.2 13.2A2.8 2.8 0 0 0 6.6 8.2 3 3 0 0 1 9.9 3.5"/>
+    <circle cx="9.9" cy="3.5" r=".85" fill="currentColor" stroke="none"/>
+  </svg>
+</div>
+
+<div class="ox-app">
+
+  <!-- ── Titlebar propia: acá no hay frame nativo ─────────────────────────── -->
+  <header class="ox-titlebar">
+    <div class="ox-brand ox-no-drag" data-tip="Rx" id="brand">
+      <svg class="ox-brand__mark ox-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 1.9V7.9"/>
+        <path d="M8 9.6V14.1"/>
+        <path d="M8.2 13.2A2.8 2.8 0 0 0 6.6 8.2 3 3 0 0 1 9.9 3.5"/>
+        <circle cx="9.9" cy="3.5" r=".85" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="ox-brand__name">Rx</span>
+    </div>
+
+    <button class="ox-iconbtn ox-iconbtn--sm ox-no-drag" id="btn-palette"
+            data-tip="Comandos" data-tip-key="Ctrl K"><i data-icon="search"></i></button>
+
+    <!-- Contexto de la vista actual. Lo llena el router. -->
+    <div class="ox-titlebar__context" id="titlebar-context"></div>
+
+    <div class="ox-wincontrols">
+      <button class="ox-wincontrol" id="win-min"   aria-label="Minimizar"><i data-icon="winMin"></i></button>
+      <button class="ox-wincontrol" id="win-max"   aria-label="Maximizar"><i data-icon="winMax"></i></button>
+      <button class="ox-wincontrol ox-wincontrol--close" id="win-close" aria-label="Cerrar"><i data-icon="winClose"></i></button>
+    </div>
+  </header>
+
+  <div class="ox-body">
+
+    <!-- ── Rail ──────────────────────────────────────────────────────────── -->
+    <nav class="ox-rail">
+      <div class="ox-rail__top">
+        <button class="ox-btn ox-btn--secondary ox-flashable" id="btn-nueva-receta" style="width:100%">
+          <i data-icon="plus"></i> Nueva receta
+        </button>
+      </div>
+
+      <div class="ox-rail__nav ox-scroll">
+        <div class="ox-rail__group">
+          <button class="ox-navitem" data-view="tablero">
+            <i data-icon="home"></i> Tablero
+          </button>
+          <button class="ox-navitem" data-view="pacientes">
+            <i data-icon="users"></i> Pacientes <span class="ox-navitem__count" id="cuenta-pacientes">0</span>
+          </button>
+          <button class="ox-navitem" data-view="recetas">
+            <i data-icon="file"></i> Recetas <span class="ox-navitem__count" id="cuenta-recetas">0</span>
+          </button>
+        </div>
+
+        <div class="ox-rail__group">
+          <div class="ox-rail__group-label">Catálogo</div>
+          <button class="ox-navitem" data-view="medicamentos">
+            <i data-icon="pill"></i> Medicamentos
+          </button>
+        </div>
+
+        <div class="ox-rail__group">
+          <div class="ox-rail__group-label">Sistema</div>
+          <button class="ox-navitem" data-view="ajustes">
+            <i data-icon="settings"></i> Ajustes
+          </button>
+        </div>
+      </div>
+
+      <div class="ox-rail__foot" id="rail-foot">
+        <button class="ox-btn ox-btn--ghost ox-flashable" id="btn-bloquear" style="width:100%"
+                data-tip="Cierra la base y pide la contraseña" data-tip-side="top">
+          <i data-icon="lock"></i> Bloquear
+        </button>
+      </div>
+    </nav>
+
+    <!-- ── Vista ─────────────────────────────────────────────────────────── -->
+    <main class="ox-main" id="view"></main>
+  </div>
+
+  <!-- ── Statusbar ───────────────────────────────────────────────────────── -->
+  <footer class="ox-statusbar">
+    <div class="ox-statusbar__item" data-tip="Recetas emitidas hoy" data-tip-side="top">
+      <i data-icon="file"></i> <span class="ox-statusbar__value ox-num" id="stat-hoy">0</span> hoy
+    </div>
+    <div class="ox-statusbar__item" id="stat-cifrado" data-tip="La base está cifrada en disco" data-tip-side="top">
+      <i data-icon="lock"></i> <span class="ox-statusbar__value">Cifrada</span>
+    </div>
+    <div class="ox-spacer"></div>
+    <div class="ox-statusbar__item" id="stat-version"></div>
+  </footer>
+</div>
+
+<!-- ── Cerradura ──────────────────────────────────────────────────────────────
+     Tapa la app entera mientras la base está cerrada. No es decorativa: el
+     proceso principal rechaza todo pedido de dominio si la base no está
+     abierta, así que esto es lo que se ve, no lo que protege. -->
+<div id="cerradura" class="rx-cerradura" hidden></div>
+
+<!-- Todos los overlays se portalean acá: fuera del flujo, por encima de todo. -->
+<div id="ox-layer"></div>
+
+<script type="module" src="./js/app.js"></script>

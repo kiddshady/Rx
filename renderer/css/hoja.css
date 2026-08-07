@@ -1,0 +1,194 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rx — la hoja de receta
+
+   Este archivo lo cargan DOS documentos: la app (para la vista previa) y la
+   ventana oculta que genera el PDF. A propósito. Que la previa y el papel se
+   vean distinto es el bug clásico de estas apps, y la única forma segura de
+   evitarlo es que no haya dos hojas de estilo que puedan desincronizarse.
+
+   Por eso todo acá está en milímetros y puntos, no en píxeles: son las
+   unidades del papel. `.rx-hoja` mide exactamente el área imprimible de una
+   A5 con 8 mm de margen (148−16 × 210−16), así que lo que entra en la caja en
+   pantalla es lo que entra en la hoja.
+
+   Nada de esto se ve afectado por el tema oscuro de la app: la hoja es blanca
+   siempre, porque el papel es blanco siempre.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Source Sans 3'; font-weight: 400; font-style: normal;
+  src: url('../fonts/SourceSans3-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3'; font-weight: 600; font-style: normal;
+  src: url('../fonts/SourceSans3-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3'; font-weight: 700; font-style: normal;
+  src: url('../fonts/SourceSans3-Bold.woff2') format('woff2');
+}
+
+.rx-hoja {
+  /* A5 = 148 × 210 mm, menos 8 mm de margen por lado. */
+  width: 132mm;
+  min-height: 194mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: #111;
+  font-family: 'Source Sans 3', 'Segoe UI', system-ui, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  /* La hoja no hereda nada del tema oscuro ni de la selección de la app. */
+  -webkit-font-smoothing: antialiased;
+}
+
+.rx-hoja *,
+.rx-hoja *::before,
+.rx-hoja *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Plantilla clásica ───────────────────────────────────────────────────── */
+
+.rx-hoja--clasica { padding: 2mm 1mm 1mm; }
+
+.rx-hoja--clasica .marca-dup {
+  align-self: center;
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 2px 8px;
+  border: 1px solid #bbb;
+  border-radius: 2px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #888;
+}
+/* El original reserva el mismo alto aunque no sea duplicado, para que las dos
+   hojas del par arranquen a la misma altura. Se conserva. */
+.rx-hoja--clasica .marca-dup--vacia { border-color: transparent; color: transparent; }
+
+.rx-hoja--clasica .cuerpo { flex: 1 0 auto; }
+
+.rx-hoja--clasica .paciente { line-height: 1.25; }
+.rx-hoja--clasica .paciente dl { display: grid; grid-template-columns: 38mm 1fr; gap: 0 8px; }
+.rx-hoja--clasica .paciente dt { color: #444; font-weight: 600; }
+.rx-hoja--clasica .paciente dd { color: #111; font-weight: 600; }
+
+.rx-hoja--clasica .rp {
+  margin: 5mm 0 3mm;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #888;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.rx-hoja--clasica .item { padding: 3mm 0; border-bottom: 1px dotted #ccc; }
+.rx-hoja--clasica .item .nombre { font-size: 18px; font-weight: 700; }
+.rx-hoja--clasica .item .detalle { margin-top: 3px; font-size: 15px; color: #222; }
+.rx-hoja--clasica .item .detalle > span { display: block; }
+.rx-hoja--clasica .item .fila { display: flex; gap: 16px; }
+
+.rx-hoja--clasica .pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: auto;
+  padding-top: 5mm;
+}
+.rx-hoja--clasica .fecha { font-size: 16px; }
+.rx-hoja--clasica .firma { min-width: 70mm; text-align: center; }
+/* El hueco de la firma manuscrita. No es decorativo: es el espacio donde la
+   doctora firma con birome, y por eso tiene una altura mínima explícita. */
+.rx-hoja--clasica .firma .hueco { height: 18mm; }
+.rx-hoja--clasica .firma .linea {
+  padding-top: 4px;
+  border-top: 1px solid #555;
+  font-size: 14px;
+  color: #222;
+}
+.rx-hoja--clasica .firma .sello { margin-top: 2px; font-size: 14px; color: #444; }
+
+/* ── Plantilla RPE ───────────────────────────────────────────────────────── */
+/* Calcada de la plantilla oficial: Verdana, T1 = 14pt negrita, T2 = 12pt
+   normal, separadores #808080 de 0.025 cm, cajas con radio de 6 mm. */
+
+.rx-hoja--rpe {
+  font-family: Verdana, 'DejaVu Sans', sans-serif;
+  color: #000;
+}
+
+.rx-hoja--rpe .caja-paciente {
+  margin-bottom: 4mm;
+  padding: 4mm 5mm;
+  border: 0.025cm solid #808080;
+  border-radius: 6mm;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+.rx-hoja--rpe .caja-paciente .nombre {
+  margin-bottom: 1.5mm;
+  font-size: 14pt;
+  font-weight: bold;
+}
+.rx-hoja--rpe .fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-bottom: 1mm;
+}
+.rx-hoja--rpe .fila span { white-space: nowrap; }
+
+.rx-hoja--rpe .encabezado-rp {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4mm;
+  font-size: 13pt;
+}
+.rx-hoja--rpe .marca-dup {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18pt;
+  letter-spacing: 0.08em;
+  color: #808080;
+}
+
+.rx-hoja--rpe .item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2mm;
+}
+.rx-hoja--rpe .item .principal { flex: 1; }
+.rx-hoja--rpe .item .nombre,
+.rx-hoja--rpe .item .dosis,
+.rx-hoja--rpe .item .marca { margin-bottom: 0.5mm; font-size: 14pt; font-weight: bold; }
+.rx-hoja--rpe .item .diagnostico { margin-bottom: 0.3mm; font-size: 12pt; }
+.rx-hoja--rpe .item .indicaciones { font-size: 12pt; }
+.rx-hoja--rpe .item .envases { min-width: 12mm; text-align: right; font-size: 14pt; font-weight: bold; }
+
+.rx-hoja--rpe .separador { border: none; border-top: 0.025cm solid #808080; margin: 2mm 0; }
+
+/* Empuja el pie al fondo y de paso deja el espacio de firma manuscrita. */
+.rx-hoja--rpe .hueco-firma { flex: 1; min-height: 40mm; }
+
+.rx-hoja--rpe .pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 1mm;
+  font-size: 12pt;
+}
+.rx-hoja--rpe .firma { min-width: 50mm; text-align: center; }
+.rx-hoja--rpe .firma .linea {
+  width: 45mm;
+  margin: 0 auto 2mm;
+  border-top: 1px solid #000;
+}
+
+/* ── Sin paciente (solo se ve en la vista previa) ─────────────────────────── */
+.rx-hoja .sin-datos { color: #999; font-style: italic; }

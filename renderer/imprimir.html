@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!-- Nada inline: con `script-src 'self'` un <script> o un <style> en la página
+     queda bloqueado sin decir nada, y desde afuera solo se ve que la hoja nunca
+     se pinta. El JS y el CSS de esta página viven en sus propios archivos. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self';">
+<title>Receta</title>
+<link rel="stylesheet" href="./css/hoja.css">
+<link rel="stylesheet" href="./css/imprimir.css">
+</head>
+<body>
+<div id="papel"></div>
+<script type="module" src="./js/imprimir.js"></script>
+</body>
+</html>
