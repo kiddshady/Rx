@@ -120,6 +120,15 @@ function rpe(r, duplicado) {
   }
   h += `</div>`;
 
+  /* La cobertura va en su propia caja, aparte de la del paciente, como en el
+     formulario oficial. Si no está cargada no se dibuja: una caja vacía ocupa
+     lugar en la hoja y no dice nada. */
+  if (p.cobertura) {
+    h += `<div class="caja-cobertura"><span>Cobertura: ${esc(p.cobertura)}</span>`;
+    if (p.afiliado) h += `<span>Afiliado: ${esc(p.afiliado)}</span>`;
+    h += `</div>`;
+  }
+
   h += `<div class="encabezado-rp"><div>Rp/.</div>`;
   if (duplicado) h += `<div class="marca-dup">DUPLICADO</div>`;
   h += `<div>Envases</div></div>`;

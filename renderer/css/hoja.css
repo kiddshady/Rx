@@ -114,9 +114,15 @@
 /* Calcada de la plantilla oficial: Verdana, T1 = 14pt negrita, T2 = 12pt
    normal, separadores #808080 de 0.025 cm, cajas con radio de 6 mm. */
 
+/* El peso base acá es normal, no el 600 de `.rx-hoja`. No es un matiz: Verdana
+   solo trae Regular y Bold, y ante un 600 Chromium redondea para arriba. O sea
+   que ese 600 heredado no se veía semibold, se veía Bold — el cuerpo entero
+   salía tan negrita como los títulos y T1 y T2 quedaban indistinguibles. El
+   bold va solo donde está declarado. */
 .rx-hoja--rpe {
   font-family: Verdana, 'DejaVu Sans', sans-serif;
   color: #000;
+  font-weight: normal;
 }
 
 .rx-hoja--rpe .caja-paciente {
@@ -140,6 +146,24 @@
 }
 .rx-hoja--rpe .fila span { white-space: nowrap; }
 
+/* Mismo borde y mismo radio que la caja del paciente, pero es de una sola
+   línea, así que lleva menos aire arriba y abajo. */
+.rx-hoja--rpe .caja-cobertura {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-bottom: 4mm;
+  padding: 2mm 5mm;
+  border: 0.025cm solid #808080;
+  border-radius: 6mm;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+/* Las dos cajas van juntas, no separadas por el mismo aire que las separa del
+   Rp/. Solo cuando hay cobertura: sin ella, la del paciente conserva su
+   margen de siempre y nada se mueve. */
+.rx-hoja--rpe .caja-paciente:has(+ .caja-cobertura) { margin-bottom: 2mm; }
+
 .rx-hoja--rpe .encabezado-rp {
   position: relative;
   display: flex;
@@ -153,6 +177,7 @@
   left: 50%;
   transform: translateX(-50%);
   font-size: 18pt;
+  font-weight: 600;   /* el sello no es T2: mantiene el peso que ya tenía */
   letter-spacing: 0.08em;
   color: #808080;
 }
@@ -173,8 +198,14 @@
 
 .rx-hoja--rpe .separador { border: none; border-top: 0.025cm solid #808080; margin: 2mm 0; }
 
-/* Empuja el pie al fondo y de paso deja el espacio de firma manuscrita. */
-.rx-hoja--rpe .hueco-firma { flex: 1; min-height: 40mm; }
+/* Empuja el pie al fondo y de paso deja el espacio de firma manuscrita.
+
+   El mínimo es el piso, no el ideal: con `flex: 1` el hueco se estira solo
+   hasta donde haya lugar — con un medicamento pasa de 78 mm — y recién se
+   achica cuando la hoja se llena. Cuando el mínimo era 40 mm no podía ceder,
+   y dos medicamentos con la caja de cobertura tiraban el pie a otra página
+   por 4,5 mm. 30 mm siguen siendo tres centímetros de birome. */
+.rx-hoja--rpe .hueco-firma { flex: 1; min-height: 30mm; }
 
 .rx-hoja--rpe .pie {
   display: flex;
