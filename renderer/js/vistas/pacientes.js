@@ -18,6 +18,43 @@ function campo(id, rotulo, valor, extra = '') {
   </div>`;
 }
 
+/* Los tres que admite el DNI. */
+const SEXOS = ['Femenino', 'Masculino', 'X'];
+
+/* El sexo sale de una lista corta y cerrada, así que va en el select propio y
+   no en un `<input list>`. El datalist abre el desplegable NATIVO de Chromium
+   —su chevron, su lista, su tipografía—, que es lo único que quedaba sin
+   dibujar en toda la app.
+
+   El valor vive en el `value` del botón, que es una propiedad real de
+   `<button>` y no un truco: así `leerFormulario` lo lee igual que a cualquier
+   input, sin tener que saber que este campo es distinto. */
+function campoSexo(valor) {
+  return `<div class="ox-field">
+    <label class="ox-field__label">Sexo</label>
+    <button class="ox-select" id="p-sexo" type="button" value="${esc(valor || '')}">
+      <span class="ox-select__value" data-placeholder="Sin especificar">${esc(valor || '')}</span>
+      <i data-icon="chevronDown"></i>
+    </button>
+  </div>`;
+}
+
+function cablearSexo(caja) {
+  const btn = caja.querySelector('#p-sexo');
+  const val = btn.querySelector('.ox-select__value');
+  const poner = (v) => { btn.value = v; val.textContent = v; };
+
+  btn.addEventListener('click', () => {
+    Menu.show(btn, [
+      ...SEXOS.map((s) => ({ label: s, selected: btn.value === s, onSelect: () => poner(s) })),
+      { sep: true },
+      /* Con el `<input>` el campo se vaciaba borrando el texto. Sin esta
+         opción, un click equivocado no tendría vuelta atrás. */
+      { label: 'Sin especificar', selected: !btn.value, onSelect: () => poner('') },
+    ]);
+  });
+}
+
 function formularioPaciente(p = {}) {
   const caja = document.createElement('div');
   caja.className = 'ox-col';
@@ -29,14 +66,7 @@ function formularioPaciente(p = {}) {
       ${campo('p-cuil', 'CUIL', p.cuil, 'placeholder="27-28123456-4"')}
     </div>
     <div class="rx-fila">
-      <div class="ox-field">
-        <label class="ox-field__label" for="p-sexo">Sexo</label>
-        <input class="ox-input" id="p-sexo" list="p-sexos" spellcheck="false"
-               value="${esc(p.sexo || '')}">
-        <datalist id="p-sexos">
-          <option value="Femenino"></option><option value="Masculino"></option><option value="X"></option>
-        </datalist>
-      </div>
+      ${campoSexo(p.sexo)}
       ${campoFecha({ id: 'p-nac', label: 'Fecha de nacimiento', valor: p.nacimiento })}
     </div>
     ${campo('p-domicilio', 'Domicilio', p.domicilio)}
@@ -50,6 +80,7 @@ function formularioPaciente(p = {}) {
     </div>
     <div class="rx-cerradura__error" id="p-error"></div>`;
   cablearFechas(caja);
+  cablearSexo(caja);
   return caja;
 }
 
