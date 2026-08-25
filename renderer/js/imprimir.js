@@ -6,8 +6,12 @@
 
 import { juego } from './hoja.js';
 
-window.__pintar = async (receta) => {
-  document.getElementById('papel').innerHTML = juego(receta);
+window.__pintar = async (documento) => {
+  /* El título es el nombre del trabajo en la cola de impresión y el que propone
+     el diálogo de guardado del sistema. Con dos papeles distintos saliendo por
+     el mismo documento, tiene que decir cuál es. */
+  document.title = documento?.tipo === 'orden' ? 'Orden de estudios' : 'Receta';
+  document.getElementById('papel').innerHTML = juego(documento);
   /* Sin esto, printToPDF puede disparar mientras la Source Sans todavía no
      terminó de cargar: el texto sale con las métricas de la tipografía de
      respaldo y los renglones caen distinto que en la vista previa. */

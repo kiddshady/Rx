@@ -143,6 +143,12 @@
   box-shadow: inset 0 -1px 0 var(--ox-line);
 }
 
+/* Cuando el pedido no entra en la hoja, el rótulo del panel lo dice. No va en
+   rojo: que un pedido largo ocupe dos hojas no es una falla, es un dato — y el
+   rojo de esta app está reservado al fallo y a la advertencia clínica. Sube de
+   la escalera de grises al texto primario, que ya alcanza para que se note. */
+.rx-previa__alerta { color: var(--ox-text); transition: var(--tr-color); }
+
 /* El papel corta contra el borde del panel arriba y abajo (el head y el propio
    redondeo), así que NO lleva esfumado: la línea ya es el límite. */
 .rx-previa__scroll {
@@ -189,7 +195,7 @@
 }
 .rx-receta__previa { min-width: 0; display: flex; }
 
-/* Un medicamento de la receta. */
+/* Un medicamento de la receta, o un estudio de la orden. */
 .rx-item {
   position: relative;
   display: grid;
@@ -221,6 +227,14 @@
   gap: var(--ox-2);
 }
 .rx-item__acciones { display: flex; flex-direction: column; gap: var(--ox-1); }
+
+/* La variante de una sola línea, que es la del estudio: sus dos campos entran
+   en un renglón, así que los botones se acuestan en vez de apilarse. Apilados,
+   la fila medía dos botones de alto para un contenido de uno solo. */
+.rx-item--fila .rx-item__acciones { flex-direction: row; align-items: center; }
+/* El nombre del estudio se lleva más ancho que la aclaración: es lo que el
+   laboratorio lee primero y lo que más se corta si queda angosto. */
+.rx-item--fila .rx-item__grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 
 /* ── Ficha del paciente ──────────────────────────────────────────────────── */
 

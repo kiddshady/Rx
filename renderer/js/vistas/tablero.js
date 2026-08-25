@@ -24,7 +24,9 @@ export async function vistaTablero() {
     sub: sinConfigurar
       ? 'Antes de emitir la primera receta, cargá tus datos profesionales en Ajustes.'
       : medico.apellido_nombre + (medico.matricula ? ` · Mat. ${medico.matricula}` : ''),
-    actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="t-nueva">
+    actions: `<button class="ox-btn ox-btn--secondary ox-flashable" id="t-orden">
+                <i data-icon="orden"></i> Nueva orden</button>
+              <button class="ox-btn ox-btn--primary ox-flashable" id="t-nueva">
                 <i data-icon="plus"></i> Nueva receta</button>`,
   }) + `
     <div class="ox-scroll ox-grow ox-scroll--line-bottom">
@@ -41,6 +43,7 @@ export async function vistaTablero() {
         ${cifra(r.pacientes, 'Pacientes', 'c-pac')}
         ${cifra(r.recetas, 'Recetas emitidas', 'c-rec')}
         ${cifra(r.recetasHoy, 'Recetas hoy', 'c-hoy')}
+        ${cifra(r.ordenes, 'Órdenes emitidas', 'c-ord')}
         ${cifra(r.evoluciones, 'Evoluciones', 'c-evo')}
       </div>
 
@@ -68,11 +71,13 @@ export async function vistaTablero() {
   countTo(document.getElementById('c-pac'), r.pacientes);
   countTo(document.getElementById('c-rec'), r.recetas);
   countTo(document.getElementById('c-hoy'), r.recetasHoy);
+  countTo(document.getElementById('c-ord'), r.ordenes);
   countTo(document.getElementById('c-evo'), r.evoluciones);
 
   /* Los listeners van sobre nodos que mueren con el próximo pintado, nunca
      delegados en #view: ese elemento sobrevive y los acumularía. */
   document.getElementById('t-nueva').onclick = () => Router.go('receta');
+  document.getElementById('t-orden').onclick = () => Router.go('orden');
   document.getElementById('t-todas').onclick = () => Router.go('recetas');
   document.getElementById('t-ajustes')?.addEventListener('click', () => Router.go('ajustes'));
 

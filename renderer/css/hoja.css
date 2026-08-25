@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Rx — la hoja de receta
+   Rx — la hoja
 
    Este archivo lo cargan DOS documentos: la app (para la vista previa) y la
    ventana oculta que genera el PDF. A propósito. Que la previa y el papel se
@@ -51,7 +51,13 @@
 
 /* ── Plantilla clásica ───────────────────────────────────────────────────── */
 
-.rx-hoja--clasica { padding: 2mm 1mm 1mm; }
+/* Varias reglas de acá llevan también `.rx-hoja--orden`: la orden de estudios
+   ES esta hoja con otro cuerpo, así que comparte el margen, el encabezado del
+   paciente y el pie de firma. El selector se suma; el valor no se copia. Dos
+   copias del mismo milímetro se desincronizan el día que una se toca. */
+
+.rx-hoja--clasica,
+.rx-hoja--orden { padding: 2mm 1mm 1mm; }
 
 .rx-hoja--clasica .marca-dup {
   align-self: center;
@@ -69,12 +75,17 @@
    hojas del par arranquen a la misma altura. Se conserva. */
 .rx-hoja--clasica .marca-dup--vacia { border-color: transparent; color: transparent; }
 
-.rx-hoja--clasica .cuerpo { flex: 1 0 auto; }
+.rx-hoja--clasica .cuerpo,
+.rx-hoja--orden .cuerpo { flex: 1 0 auto; }
 
-.rx-hoja--clasica .paciente { line-height: 1.25; }
-.rx-hoja--clasica .paciente dl { display: grid; grid-template-columns: 38mm 1fr; gap: 0 8px; }
-.rx-hoja--clasica .paciente dt { color: #444; font-weight: 600; }
-.rx-hoja--clasica .paciente dd { color: #111; font-weight: 600; }
+.rx-hoja--clasica .paciente,
+.rx-hoja--orden .paciente { line-height: 1.25; }
+.rx-hoja--clasica .paciente dl,
+.rx-hoja--orden .paciente dl { display: grid; grid-template-columns: 38mm 1fr; gap: 0 8px; }
+.rx-hoja--clasica .paciente dt,
+.rx-hoja--orden .paciente dt { color: #444; font-weight: 600; }
+.rx-hoja--clasica .paciente dd,
+.rx-hoja--orden .paciente dd { color: #111; font-weight: 600; }
 
 .rx-hoja--clasica .rp {
   margin: 5mm 0 3mm;
@@ -90,25 +101,31 @@
 .rx-hoja--clasica .item .detalle > span { display: block; }
 .rx-hoja--clasica .item .fila { display: flex; gap: 16px; }
 
-.rx-hoja--clasica .pie {
+.rx-hoja--clasica .pie,
+.rx-hoja--orden .pie {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   margin-top: auto;
   padding-top: 5mm;
 }
-.rx-hoja--clasica .fecha { font-size: 16px; }
-.rx-hoja--clasica .firma { min-width: 70mm; text-align: center; }
+.rx-hoja--clasica .fecha,
+.rx-hoja--orden .fecha { font-size: 16px; }
+.rx-hoja--clasica .firma,
+.rx-hoja--orden .firma { min-width: 70mm; text-align: center; }
 /* El hueco de la firma manuscrita. No es decorativo: es el espacio donde la
    doctora firma con birome, y por eso tiene una altura mínima explícita. */
-.rx-hoja--clasica .firma .hueco { height: 18mm; }
-.rx-hoja--clasica .firma .linea {
+.rx-hoja--clasica .firma .hueco,
+.rx-hoja--orden .firma .hueco { height: 18mm; }
+.rx-hoja--clasica .firma .linea,
+.rx-hoja--orden .firma .linea {
   padding-top: 4px;
   border-top: 1px solid #555;
   font-size: 14px;
   color: #222;
 }
-.rx-hoja--clasica .firma .sello { margin-top: 2px; font-size: 14px; color: #444; }
+.rx-hoja--clasica .firma .sello,
+.rx-hoja--orden .firma .sello { margin-top: 2px; font-size: 14px; color: #444; }
 
 /* ── Plantilla RPE ───────────────────────────────────────────────────────── */
 /* Calcada de la plantilla oficial: Verdana, T1 = 14pt negrita, T2 = 12pt
@@ -220,6 +237,54 @@
   margin: 0 auto 2mm;
   border-top: 1px solid #000;
 }
+
+/* ── Orden de estudios ───────────────────────────────────────────────────── */
+/* Solo lo que la clásica no tiene: el título del pedido, la lista numerada y
+   el cierre con diagnóstico y observaciones. El resto lo hereda arriba. */
+
+/* Mismo tratamiento que el "Rp./" de la clásica: es el mismo rol en la hoja
+   —acá empieza lo que se pide— y tiene que leerse igual de fuerte. */
+.rx-hoja--orden .titulo {
+  margin: 5mm 0 3mm;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #888;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+/* El número lo pone un contador de CSS y vive en el margen: así los nombres
+   arrancan todos en la misma columna aunque el pedido pase de nueve estudios y
+   el número empiece a ocupar dos cifras. */
+.rx-hoja--orden .estudios { list-style: none; counter-reset: estudio; }
+.rx-hoja--orden .estudios li {
+  position: relative;
+  counter-increment: estudio;
+  padding: 0 0 2.4mm 9mm;
+}
+.rx-hoja--orden .estudios li::before {
+  content: counter(estudio) ".";
+  position: absolute;
+  left: 0;
+  width: 7mm;
+  text-align: right;
+  font-size: 17px;
+  color: #444;
+}
+.rx-hoja--orden .estudios .nombre { display: block; font-size: 17px; font-weight: 700; }
+.rx-hoja--orden .estudios .aclaracion { display: block; font-size: 15px; color: #222; }
+
+/* Diagnóstico y observaciones cierran el pedido. Van separados de la lista por
+   una línea porque no son un estudio más: el laboratorio tiene que poder
+   contar los renglones pedidos sin dudar de los dos últimos. */
+.rx-hoja--orden .dato {
+  margin-top: 3mm;
+  padding-top: 2.5mm;
+  border-top: 1px dotted #ccc;
+  font-size: 15px;
+  color: #222;
+}
+.rx-hoja--orden .dato + .dato { margin-top: 1.5mm; padding-top: 0; border-top: none; }
+.rx-hoja--orden .dato .rotulo { color: #444; }
 
 /* ── Sin paciente (solo se ve en la vista previa) ─────────────────────────── */
 .rx-hoja .sin-datos { color: #999; font-style: italic; }

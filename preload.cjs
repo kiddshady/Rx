@@ -92,6 +92,12 @@ contextBridge.exposeInMainWorld('rx', {
     remove: (id) => call('medicamentos:remove', id),
   },
 
+  estudios: {
+    list: (opts) => call('estudios:list', opts),
+    save: (d) => call('estudios:save', d),
+    remove: (id) => call('estudios:remove', id),
+  },
+
   recetas: {
     emitir: (d) => call('recetas:emitir', d),
     get: (id) => call('recetas:get', id),
@@ -99,6 +105,15 @@ contextBridge.exposeInMainWorld('rx', {
     remove: (id) => call('recetas:remove', id),
     pdf: (id) => call('recetas:pdf', id),
     imprimir: (id) => call('recetas:imprimir', id),
+  },
+
+  ordenes: {
+    emitir: (d) => call('ordenes:emitir', d),
+    get: (id) => call('ordenes:get', id),
+    list: (opts) => call('ordenes:list', opts),
+    remove: (id) => call('ordenes:remove', id),
+    pdf: (id) => call('ordenes:pdf', id),
+    imprimir: (id) => call('ordenes:imprimir', id),
   },
 
   respaldo: {

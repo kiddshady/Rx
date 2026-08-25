@@ -173,6 +173,10 @@ function registrarDominio() {
   handle('medicamentos:save', conBase((d) => db.medicamentos.save(d)));
   handle('medicamentos:remove', conBase((id) => db.medicamentos.remove(id)));
 
+  handle('estudios:list', conBase((opts) => db.estudios.list(opts || {})));
+  handle('estudios:save', conBase((d) => db.estudios.save(d)));
+  handle('estudios:remove', conBase((id) => db.estudios.remove(id)));
+
   handle('recetas:emitir', conBase((d) => db.recetas.emitir(d)));
   handle('recetas:get', conBase((id) => db.recetas.get(id)));
   handle('recetas:list', conBase((opts) => db.recetas.list(opts || {})));
@@ -184,6 +188,13 @@ function registrarDominio() {
      papel se pintaran con código distinto. */
   handle('recetas:pdf', conBase((id) => impresion.aPdf(ventana(), id)));
   handle('recetas:imprimir', conBase((id) => impresion.aImpresora(id)));
+
+  handle('ordenes:emitir', conBase((d) => db.ordenes.emitir(d)));
+  handle('ordenes:get', conBase((id) => db.ordenes.get(id)));
+  handle('ordenes:list', conBase((opts) => db.ordenes.list(opts || {})));
+  handle('ordenes:remove', conBase((id) => db.ordenes.remove(id)));
+  handle('ordenes:pdf', conBase((id) => impresion.aPdfOrden(ventana(), id)));
+  handle('ordenes:imprimir', conBase((id) => impresion.aImpresoraOrden(id)));
 }
 
 /* ── Respaldo ────────────────────────────────────────────────────────────── */

@@ -8,8 +8,14 @@
    El PDF sale de `printToPDF`, que es el motor de impresión de Chromium: lo
    que se ve es lo que se guarda.
 
-   Todo lo que se imprime sale de `receta.snapshot`, nunca de las tablas vivas.
+   Todo lo que se imprime sale del `snapshot`, nunca de las tablas vivas.
    Reimprimir una receta de marzo tiene que dar la hoja de marzo.
+
+   Hay dos documentos —la receta y la orden de estudios— y de acá para abajo
+   son el mismo trámite: traducir la fila a la forma que espera la plantilla y
+   mandarla a la ventana. Lo único que cambia es de qué tabla salen y cuántas
+   hojas imprime cada uno, y eso lo decide `juego()` en la plantilla. Por eso
+   el circuito de impresión no se duplicó: se le pasa el dato ya traducido.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const { BrowserWindow, dialog, shell } = require('electron');
@@ -24,6 +30,7 @@ function datosDeReceta(r) {
   if (!r) throw new Error('Esa receta no existe.');
   const s = r.snapshot || {};
   return {
+    tipo: 'receta',
     paciente: s.paciente || null,
     medico: s.medico || null,
     items: (r.items || []).map((it) => ({
@@ -36,12 +43,30 @@ function datosDeReceta(r) {
   };
 }
 
-/** Nombre de archivo sugerido: receta-apellido-nombre-2026-08-07.pdf */
+/** Traduce una fila de `orden` a lo que espera la plantilla. */
+function datosDeOrden(o) {
+  if (!o) throw new Error('Esa orden no existe.');
+  const s = o.snapshot || {};
+  return {
+    tipo: 'orden',
+    paciente: s.paciente || null,
+    medico: s.medico || null,
+    items: (o.items || []).map((it) => ({ nombre: it.nombre, aclaracion: it.aclaracion })),
+    fecha: o.fecha,
+    diagnostico: o.diagnostico,
+    observaciones: o.observaciones,
+  };
+}
+
+/** Cómo se llama el documento en un diálogo o en un nombre de archivo. */
+function esOrden(datos) { return datos?.tipo === 'orden'; }
+
+/** Nombre sugerido: receta-apellido-nombre-2026-08-07.pdf (u orden-…). */
 function nombreSugerido(datos) {
   const quien = String(datos?.paciente?.apellido_nombre || 'paciente')
     .normalize('NFD').replace(new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g'), '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `receta-${quien}-${datos.fecha}.pdf`;
+  return `${esOrden(datos) ? 'orden' : 'receta'}-${quien}-${datos.fecha}.pdf`;
 }
 
 /**
@@ -82,13 +107,13 @@ async function ventanaConHoja(datos) {
 }
 
 /**
- * Genera el PDF y devuelve los bytes. Está separado de `aPdf` para que se
- * pueda probar sin que aparezca un diálogo de guardado — si no, la única forma
- * de saber si la impresión anda es abrirla y mirar, que no es una prueba.
+ * Genera el PDF de un documento ya traducido y devuelve los bytes. Está
+ * separado del guardado para que se pueda probar sin que aparezca un diálogo
+ * — si no, la única forma de saber si la impresión anda es abrirla y mirar,
+ * que no es una prueba.
  * @returns {Promise<Buffer>}
  */
-async function generarPdf(recetaId) {
-  const datos = datosDeReceta(db.recetas.get(recetaId));
+async function pdfDe(datos) {
   const win = await ventanaConHoja(datos);
   try {
     return await win.webContents.printToPDF({
@@ -101,13 +126,12 @@ async function generarPdf(recetaId) {
   }
 }
 
-/** Exporta la receta a PDF y la abre. */
-async function aPdf(padre, recetaId) {
-  const datos = datosDeReceta(db.recetas.get(recetaId));
-  const pdf = await generarPdf(recetaId);
+/** Pide dónde guardar, escribe el PDF y lo abre. */
+async function guardarPdf(padre, datos) {
+  const pdf = await pdfDe(datos);
 
   const res = await dialog.showSaveDialog(padre, {
-    title: 'Guardar la receta como PDF',
+    title: esOrden(datos) ? 'Guardar la orden como PDF' : 'Guardar la receta como PDF',
     defaultPath: nombreSugerido(datos),
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
@@ -118,9 +142,8 @@ async function aPdf(padre, recetaId) {
   return { cancelado: false, ruta: res.filePath };
 }
 
-/** Manda la receta a la impresora, con el diálogo del sistema. */
-async function aImpresora(recetaId) {
-  const datos = datosDeReceta(db.recetas.get(recetaId));
+/** Manda el documento a la impresora, con el diálogo del sistema. */
+async function mandarAImpresora(datos) {
   const win = await ventanaConHoja(datos);
   return new Promise((listo) => {
     win.webContents.print(
@@ -134,4 +157,17 @@ async function aImpresora(recetaId) {
   });
 }
 
-module.exports = { aPdf, aImpresora, generarPdf, datosDeReceta };
+/* ── Por documento ───────────────────────────────────────────────────────── */
+
+const generarPdf = (recetaId) => pdfDe(datosDeReceta(db.recetas.get(recetaId)));
+const aPdf = (padre, recetaId) => guardarPdf(padre, datosDeReceta(db.recetas.get(recetaId)));
+const aImpresora = (recetaId) => mandarAImpresora(datosDeReceta(db.recetas.get(recetaId)));
+
+const generarPdfOrden = (ordenId) => pdfDe(datosDeOrden(db.ordenes.get(ordenId)));
+const aPdfOrden = (padre, ordenId) => guardarPdf(padre, datosDeOrden(db.ordenes.get(ordenId)));
+const aImpresoraOrden = (ordenId) => mandarAImpresora(datosDeOrden(db.ordenes.get(ordenId)));
+
+module.exports = {
+  aPdf, aImpresora, generarPdf, datosDeReceta,
+  aPdfOrden, aImpresoraOrden, generarPdfOrden, datosDeOrden,
+};

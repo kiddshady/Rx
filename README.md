@@ -1,8 +1,9 @@
 # Rx
 
-Historia clínica y recetas para consultorio. App de escritorio, un solo
-profesional, datos **cifrados en disco**, y la receta se firma **a mano** sobre
-el papel: no hay firma electrónica ni nada que dependa de un servicio de nadie.
+Historia clínica, recetas y órdenes de estudios para consultorio. App de
+escritorio, un solo profesional, datos **cifrados en disco**, y lo que sale
+impreso se firma **a mano** sobre el papel: no hay firma electrónica ni nada
+que dependa de un servicio de nadie.
 
 Construida sobre [Onyx](../../..\tools\Onyx). Todo lo que dice el README de Onyx
 sobre el shell, los tokens y el anti-flash vale acá; esto documenta lo que Rx
@@ -70,13 +71,14 @@ src/
 renderer/
   index.html      Shell + la cerradura.
   imprimir.html   El documento que se imprime. Sin nada inline (ver CSP).
-  css/hoja.css    La hoja de receta. La cargan la app Y la impresión.
+  css/hoja.css    Las hojas. Las cargan la app Y la impresión.
   js/
-    hoja.js       La plantilla de la receta. Misma historia: la usan las dos.
+    hoja.js       Las plantillas: clásica, RPE y orden. Las usan las dos.
     desbloqueo.js La cerradura.
     campo-fecha.js Campo de fecha propio, sin el <input type=date> de Chromium.
     tienda.js     Estado compartido y validadores (DNI, CUIL).
-    vistas/       Tablero, pacientes, recetas, medicamentos, ajustes.
+    vistas/       Tablero, pacientes, recetas, órdenes, medicamentos,
+                  estudios, ajustes.
 ```
 
 ---
@@ -100,6 +102,36 @@ ventana de impresión. A propósito: que la previa y el papel se vean distinto e
 existan dos hojas que puedan desincronizarse. `.rx-hoja` mide exactamente el
 área imprimible de una A5 con 8 mm de margen (132 × 194 mm), y hay un test que
 lo verifica en píxeles.
+
+### La orden de estudios es la receta con otro cuerpo
+
+Mismo circuito completo: paciente, hoja en vivo al lado, emitir, congelar la
+instantánea, salir a papel o a PDF, y quedar en el historial y en la ficha. Lo
+que cambia es el medio de la hoja —el listado numerado de estudios en vez del
+`Rp./`— y que sale en **una** sola hoja: el duplicado de la receta existe
+porque se lo queda la farmacia, y la orden se la queda el laboratorio y listo.
+
+Por eso comparte de verdad, no "parecido": el encabezado del paciente y el pie
+de firma son las mismas funciones de `hoja.js`, y las reglas de CSS que hereda
+llevan el selector duplicado en vez del valor copiado. Dos copias del mismo
+milímetro se desincronizan el día que una se toca — y acá eso significa dos
+papeles que se ven distinto.
+
+El diagnóstico va **uno** para toda la orden y no uno por estudio: en el papel
+encabeza el pedido entero, y repetirlo en cada renglón sería ruido en una hoja
+donde el lugar escasea.
+
+### Un pedido largo no entra, y la previa lo dice
+
+La A5 aguanta unos catorce estudios. Pasado eso la hoja sigue en una segunda
+página, y eso es lo único que la vista previa **no** muestra sola: el papel
+simplemente se dibuja más alto y no se nota hasta que ya salió por la
+impresora. El rótulo del panel lo avisa, midiendo el alto contra el ancho del
+mismo elemento (132 × 194 mm) para que el zoom de la previa se cancele solo en
+vez de tener que compensarlo a mano.
+
+No va en rojo: que un pedido largo ocupe dos hojas es un dato, no una falla. El
+rojo de esta app está reservado al fallo y a la advertencia clínica.
 
 ### El recifrado tiene que bajar el WAL
 
@@ -147,14 +179,20 @@ sino:
 - que el archivo en disco **esté realmente cifrado** (la cabecera no es
   `SQLite format 3`, y ni el apellido ni la alergia aparecen en crudo);
 - que una contraseña equivocada **no** abra;
-- que la receta emitida no cambie cuando cambian los datos vivos;
+- que la receta y la orden emitidas no cambien cuando cambian los datos vivos;
 - que el respaldo salga cifrado y se pueda reabrir;
 - que cambiar la contraseña recifre y la vieja deje de servir;
-- que el PDF tenga **dos** páginas (original y duplicado).
+- que el PDF de la receta tenga **dos** páginas (original y duplicado) y el de
+  la orden **una** sola;
+- que una base del esquema 1 **migre sola** al abrirla, y que respalde antes de
+  tocar nada. Es el camino riesgoso de verdad: la base nueva la estrena
+  cualquiera que instale hoy, la vieja está en la PC de quien ya venía usando
+  la app.
 
 `npm run humo` monta la app de verdad, la desbloquea escribiendo la contraseña
-en la cerradura, recorre las vistas, carga un paciente, emite una receta y
-vuelve a bloquear. Mide **dónde caen** los overlays, no solo si existen.
+en la cerradura, recorre las vistas, carga un paciente, emite una receta y una
+orden, y vuelve a bloquear. Mide **dónde caen** los overlays, no solo si
+existen.
 
 `npx electron test/capturas.cjs <carpeta>` no es un test: siembra datos de
 muestra y saca capturas para mirar cómo quedó.

@@ -131,7 +131,7 @@ app.whenReady().then(async () => {
 
   /* ── 3. Recorrer las vistas ───────────────────────────────────────────── */
   console.log('\n3. Vistas');
-  for (const vista of ['tablero', 'pacientes', 'recetas', 'medicamentos', 'ajustes']) {
+  for (const vista of ['tablero', 'pacientes', 'recetas', 'ordenes', 'medicamentos', 'estudios', 'ajustes']) {
     await click(`.ox-navitem[data-view="${vista}"]`);
     await sleep(600);
     const hijos = await js(`document.getElementById('view').children.length`);
@@ -268,8 +268,85 @@ app.whenReady().then(async () => {
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);
 
-  /* ── 7. Bloqueo ───────────────────────────────────────────────────────── */
-  console.log('\n7. Bloqueo');
+  /* ── 7. Emitir una orden de estudios ──────────────────────────────────── */
+  console.log('\n7. Orden');
+  await click('.ox-navitem[data-view="pacientes"]');
+  await sleep(700);
+  await click('[data-ficha]');
+  await sleep(900);
+  await click('#f-orden');
+  await sleep(900);
+  ok('la vista de orden montó', await js(`!!document.getElementById('o-previa')`));
+  ok('trajo al paciente de la ficha',
+    await js(`document.getElementById('o-paciente-txt')?.textContent.includes('GÓMEZ')`));
+  ok('también avisa de la alergia antes de pedir',
+    await js(`!!document.querySelector('#o-alergias .rx-alergias')`));
+
+  await escribir('input[data-campo="nombre"][data-i="0"]', 'Hemograma completo');
+  await escribir('input[data-campo="aclaracion"][data-i="0"]', 'en ayunas');
+  await escribir('#o-diagnostico', 'Astenia');
+  await sleep(400);
+
+  /* Lo que separa la orden de la receta en el papel: va UNA hoja y sin sello de
+     duplicado. Si alguna vez salen dos, es que se coló el juego de la receta. */
+  const hojasOrden = await js(`document.querySelectorAll('#o-previa .rx-hoja').length`);
+  ok('la orden se dibuja en una sola hoja', hojasOrden === 1, `hojas=${hojasOrden}`);
+  ok('y no lleva sello de duplicado',
+    !(await js(`document.getElementById('o-previa').textContent.includes('Duplicado')`)));
+  ok('la previa muestra el estudio tipeado',
+    await js(`document.getElementById('o-previa').textContent.includes('Hemograma completo')`));
+  ok('y lo numera', await js(`!!document.querySelector('#o-previa .estudios li')`));
+  ok('el rótulo del panel dice que entra en una hoja',
+    (await js(`document.getElementById('o-hojas')?.textContent`)) === 'una hoja');
+
+  await click('#o-emitir');
+  await sleep(900);
+  ok('ofrece imprimir o guardar después de emitir',
+    await js(`document.querySelector('.ox-modal')?.textContent.includes('Orden emitida')`));
+  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Después')?.click()`);
+  await sleep(1200);
+
+  ok('la orden quedó en el historial',
+    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 1);
+  ok('el rail cuenta la orden',
+    (await js(`document.getElementById('cuenta-ordenes')?.textContent`)) === '1');
+
+  await click('[data-abrir]');
+  await sleep(900);
+  ok('la orden guardada se puede volver a ver',
+    await js(`document.querySelector('.ox-modal')?.textContent.includes('Orden del')`));
+  ok('la hoja guardada muestra el estudio',
+    await js(`document.querySelector('.ox-modal .rx-hoja')?.textContent.includes('Hemograma')`));
+  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
+  await sleep(500);
+
+  /* Un pedido largo no entra en la A5 y sigue en una segunda página. La previa
+     no lo muestra sola —el papel simplemente se dibuja más alto— así que el
+     rótulo lo tiene que decir. Es lo único de esta vista que no se ve mirando. */
+  await click('.ox-navitem[data-view="pacientes"]');
+  await sleep(700);
+  await click('[data-ficha]');
+  await sleep(900);
+  await click('#f-orden');
+  await sleep(900);
+  await js(`(() => {
+    for (let i = 0; i < 15; i++) {
+      if (i) document.getElementById('o-agregar').click();
+      const el = document.querySelector('input[data-campo="nombre"][data-i="' + i + '"]');
+      el.value = 'Estudio de prueba número ' + (i + 1);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  })()`);
+  await sleep(700);
+  ok('un pedido largo sigue siendo una sola hoja en el DOM',
+    (await js(`document.querySelectorAll('#o-previa .rx-hoja').length`)) === 1);
+  ok('pero la previa avisa que no va a entrar',
+    (await js(`document.getElementById('o-hojas')?.textContent`) || '').includes('segunda hoja'));
+
+  /* ── 8. Bloqueo ───────────────────────────────────────────────────────── */
+  console.log('\n8. Bloqueo');
   await click('#btn-bloquear');
   await sleep(1200);
   ok('vuelve la cerradura', await js(`!document.getElementById('cerradura').hidden`));

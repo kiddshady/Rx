@@ -306,9 +306,10 @@ export async function vistaFicha(id) {
     return;
   }
 
-  const [evoluciones, recetas] = await Promise.all([
+  const [evoluciones, recetas, ordenes] = await Promise.all([
     rx.evoluciones.list(id),
     rx.recetas.list({ pacienteId: id, limite: 50 }),
+    rx.ordenes.list({ pacienteId: id, limite: 50 }),
   ]);
 
   const años = edad(p.nacimiento);
@@ -326,7 +327,12 @@ export async function vistaFicha(id) {
     title: p.apellido_nombre,
     sub: filiacion.join(' · ') || 'Sin datos de filiación',
     crumbs: [{ label: 'Pacientes', view: 'pacientes' }],
+    /* Dos emisiones y un solo primario: la receta es lo que más se hace desde
+       una ficha, y la orden va al lado en secundario en vez de competir por el
+       mismo peso. */
     actions: `
+      <button class="ox-btn ox-btn--secondary ox-flashable" id="f-orden">
+        <i data-icon="orden"></i> Nueva orden</button>
       <button class="ox-btn ox-btn--primary ox-flashable" id="f-receta">
         <i data-icon="plus"></i> Nueva receta</button>
       <button class="ox-iconbtn" id="f-mas" data-tip="Más acciones"><i data-icon="more"></i></button>`,
@@ -391,6 +397,22 @@ export async function vistaFicha(id) {
             <div class="ox-listitem__aside ox-num">${esc(fecha(r.fecha))}</div>
           </div>`).join('')}</div>`}
       </div>
+
+      <div class="ox-section">
+        <div class="ox-section__head"><div class="ox-section__title">Órdenes</div></div>
+        ${ordenes.length === 0
+      ? empty({ icon: 'orden', title: 'Sin órdenes emitidas' })
+      : `<div class="ox-list">${ordenes.map((o) => `
+          <div class="ox-listitem" data-orden="${esc(o.id)}" role="button" tabindex="0">
+            <div class="ox-iconcell"><i data-icon="orden"></i></div>
+            <div class="ox-listitem__main">
+              <div class="ox-listitem__title ox-truncate">${esc(o.detalle || '—')}</div>
+              <div class="ox-listitem__sub">${plural(o.items, 'estudio')}${
+        o.diagnostico ? ` · ${esc(o.diagnostico)}` : ''}</div>
+            </div>
+            <div class="ox-listitem__aside ox-num">${esc(fecha(o.fecha))}</div>
+          </div>`).join('')}</div>`}
+      </div>
     </div>`);
 
   /* ── Ficha clínica: se guarda al salir del campo, no con un botón ──────────
@@ -423,6 +445,7 @@ export async function vistaFicha(id) {
 
   /* ── Acciones ── */
   document.getElementById('f-receta').onclick = () => Router.go('receta', id);
+  document.getElementById('f-orden').onclick = () => Router.go('orden', id);
 
   document.getElementById('f-mas').onclick = (ev) => {
     Menu.show(ev.currentTarget, [
@@ -480,6 +503,14 @@ export async function vistaFicha(id) {
 
   for (const el of document.querySelectorAll('[data-receta]')) {
     const ir = () => Router.go('recetas', el.dataset.receta);
+    el.addEventListener('click', ir);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ir(); }
+    });
+  }
+
+  for (const el of document.querySelectorAll('[data-orden]')) {
+    const ir = () => Router.go('ordenes', el.dataset.orden);
     el.addEventListener('click', ir);
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ir(); }

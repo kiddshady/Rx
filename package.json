@@ -2,7 +2,7 @@
   "name": "rx",
   "productName": "Rx",
   "version": "0.1.0",
-  "description": "Historia clínica y recetas para consultorio. Datos cifrados en disco, firma manuscrita.",
+  "description": "Historia clínica, recetas y órdenes de estudios para consultorio. Datos cifrados en disco, firma manuscrita.",
   "main": "main.cjs",
   "author": "Francisco Pavez",
   "license": "MIT",

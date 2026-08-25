@@ -124,6 +124,54 @@ app.whenReady().then(async () => {
       'el domicilio impreso cambió solo');
   });
 
+  await prueba('emite una orden de estudios con sus ítems', () => {
+    const p = db.pacientes.list()[0];
+    const o = db.ordenes.emitir({
+      paciente_id: p.id, fecha: '2026-08-07',
+      diagnostico: 'Astenia', observaciones: 'Traer estudios previos',
+      items: [
+        { nombre: 'Hemograma completo', aclaracion: 'en ayunas' },
+        { nombre: 'TSH' },
+        { nombre: 'Rx de tórax frente' },
+      ],
+    });
+    assert.equal(o.items.length, 3);
+    assert.equal(o.items[0].nombre, 'Hemograma completo');
+    assert.equal(o.items[0].aclaracion, 'en ayunas');
+    /* El orden en que se pidieron es parte del pedido: la hoja los numera. */
+    assert.equal(o.items[2].nombre, 'Rx de tórax frente', 'los estudios salieron desordenados');
+    assert.equal(o.diagnostico, 'Astenia');
+    assert.ok(o.snapshot.medico, 'la orden se guardó sin instantánea del profesional');
+  });
+
+  await prueba('rechaza una orden sin estudios', () => {
+    const p = db.pacientes.list()[0];
+    assert.throws(
+      () => db.ordenes.emitir({ paciente_id: p.id, fecha: '2026-08-07', items: [] }),
+      /al menos un estudio/);
+  });
+
+  await prueba('pedir del catálogo le suma uso al estudio', () => {
+    const p = db.pacientes.list()[0];
+    const e = db.estudios.save({ nombre: 'Glucemia', aclaracion: 'ayuno de 8 h' });
+    assert.equal(e.usos, 0);
+    db.ordenes.emitir({
+      paciente_id: p.id, fecha: '2026-08-07',
+      items: [{ nombre: e.nombre, aclaracion: e.aclaracion }],
+      desdeCatalogo: [e.id],
+    });
+    assert.equal(db.estudios.list()[0].usos, 1, 'el contador de uso no subió');
+  });
+
+  await prueba('la orden emitida NO cambia si después cambian los datos vivos', () => {
+    const p = db.pacientes.list()[0];
+    const antes = db.ordenes.list({ pacienteId: p.id })[0];
+    db.pacientes.save({ ...db.pacientes.get(p.id), cobertura: 'OTRA OBRA SOCIAL' });
+    const o = db.ordenes.get(antes.id);
+    assert.notEqual(o.snapshot.paciente.cobertura, 'OTRA OBRA SOCIAL',
+      'la cobertura impresa cambió sola');
+  });
+
   await prueba('borrar al paciente deja la receta consultable', () => {
     const p = db.pacientes.list()[0];
     const rid = db.recetas.list({ pacienteId: p.id })[0].id;
@@ -132,6 +180,14 @@ app.whenReady().then(async () => {
     assert.ok(r, 'la receta desapareció con el paciente');
     assert.equal(r.paciente_id, null, 'la clave foránea tendría que quedar en null');
     assert.equal(r.snapshot.paciente.apellido_nombre, 'GÓMEZ, MARÍA ELENA',
+      'la instantánea perdió al paciente');
+  });
+
+  await prueba('borrar al paciente deja la orden consultable', () => {
+    const o = db.ordenes.list()[0];
+    assert.ok(o, 'la orden desapareció con el paciente');
+    assert.equal(o.paciente_id, null, 'la clave foránea tendría que quedar en null');
+    assert.equal(db.ordenes.get(o.id).snapshot.paciente.apellido_nombre, 'GÓMEZ, MARÍA ELENA',
       'la instantánea perdió al paciente');
   });
 
@@ -191,6 +247,52 @@ app.whenReady().then(async () => {
     const porCuenta = /\/Count\s+2\b/.test(texto);
     assert.ok(porTipo === 2 || porCuenta,
       `esperaba 2 páginas; /Type /Page apareció ${porTipo} veces y /Count 2 ${porCuenta ? 'sí' : 'no'} está`);
+  });
+
+  await prueba('el PDF de la orden sale en UNA hoja', async () => {
+    const impresion = require('../src/impresion.cjs');
+    const o = db.ordenes.list()[0];
+    const pdf = await impresion.generarPdfOrden(o.id);
+
+    assert.ok(Buffer.isBuffer(pdf), 'no devolvió un Buffer');
+    assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-', 'no tiene la firma de un PDF');
+
+    /* La contracara del test de la receta. Acá dos páginas serían el error: la
+       orden no tiene duplicado, y si aparece es porque se coló el juego de la
+       receta — o porque la lista de estudios se desbordó de la A5. */
+    const texto = pdf.toString('latin1');
+    const porTipo = (texto.match(/\/Type\s*\/Page[^s]/g) || []).length;
+    const porCuenta = /\/Count\s+1\b/.test(texto);
+    assert.ok(porTipo === 1 || porCuenta,
+      `esperaba 1 página; /Type /Page apareció ${porTipo} veces y /Count 1 ${porCuenta ? 'sí' : 'no'} está`);
+  });
+
+  /* La migración es el camino riesgoso de verdad: la base nueva la estrena
+     cualquiera que instale hoy, pero la vieja está en la PC de quien ya venía
+     usando la app, con las historias clínicas adentro. */
+  await prueba('una base del esquema 1 migra sola al abrirla', async () => {
+    const Database = require('better-sqlite3-multiple-ciphers');
+    const buena = await llave.derivarGuardada(CLAVE_BUENA);
+    db.cerrar();
+
+    /* Se la deja como estaba antes de que existiera la orden: sin sus tablas y
+       con `user_version` en 1. */
+    const cruda = new Database(rutas.base());
+    cruda.pragma(`cipher='sqlcipher'`);
+    cruda.pragma(`key="x'${buena.toString('hex')}'"`);
+    cruda.exec('DROP TABLE orden_item; DROP TABLE orden; DROP TABLE estudio;');
+    cruda.pragma('user_version = 1');
+    cruda.close();
+
+    db.abrir(buena);
+    assert.equal(db.estudios.list().length, 0, 'no se recreó el catálogo de estudios');
+    assert.equal(db.ordenes.list().length, 0, 'no se recreó la tabla de órdenes');
+    assert.equal(db.recetas.list().length, 1, 'la migración se llevó puestas las recetas');
+
+    /* Y dejó el respaldo antes de tocar nada, que es lo que hace que migrar no
+       sea una apuesta. */
+    const respaldos = fs.readdirSync(rutas.respaldos()).filter((f) => f.includes('-v1-'));
+    assert.ok(respaldos.length > 0, 'migró sin respaldar la base vieja');
   });
 
   await prueba('cambiar la contraseña recifra: la vieja deja de servir', async () => {

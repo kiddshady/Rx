@@ -16,7 +16,7 @@
 export const S = {
   info: null,
   ajustes: {},
-  resumen: { pacientes: 0, recetas: 0, recetasHoy: 0, evoluciones: 0, ultimasRecetas: [] },
+  resumen: { pacientes: 0, recetas: 0, recetasHoy: 0, ordenes: 0, evoluciones: 0, ultimasRecetas: [] },
   medico: null,
 };
 
@@ -34,6 +34,7 @@ export function pintarChrome() {
   };
   set('cuenta-pacientes', S.resumen.pacientes);
   set('cuenta-recetas', S.resumen.recetas);
+  set('cuenta-ordenes', S.resumen.ordenes);
   set('stat-hoy', S.resumen.recetasHoy);
 }
 

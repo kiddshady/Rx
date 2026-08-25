@@ -35,6 +35,19 @@ Icons.add({
        + '<path d="M9.2 1.9v3.6h3.6"/>'
        + '<path d="M5.4 10.4h1.3l.9-1.8 1.1 3 .8-1.2h1.1"/>',
 
+  /* Portapapeles con renglones: la orden de estudios. Se lee distinto de
+     `file` (la receta) porque son dos papeles distintos y en el rail van uno
+     debajo del otro — si se parecieran, habría que leer la etiqueta. */
+  orden: '<path d="M6.1 3.1H4.7A1.4 1.4 0 0 0 3.3 4.5V12.7a1.4 1.4 0 0 0 1.4 1.4h6.6a1.4 1.4 0 0 0 1.4-1.4V4.5a1.4 1.4 0 0 0-1.4-1.4H9.9"/>'
+       + '<rect x="6.1" y="1.8" width="3.8" height="2.6" rx=".8"/>'
+       + '<path d="M5.9 7.6h4.2"/>'
+       + '<path d="M5.9 10.1h2.6"/>',
+
+  /* Matraz con su línea de líquido: el catálogo de estudios. */
+  estudio: '<path d="M6.4 1.9v4.6L3.2 11.9a1.5 1.5 0 0 0 1.3 2.2h7A1.5 1.5 0 0 0 12.8 11.9L9.6 6.5V1.9"/>'
+         + '<path d="M5.5 1.9h5"/>'
+         + '<path d="M4.5 10.1h7"/>',
+
   /* Cruz médica, para el bloque de alergias y advertencias clínicas. */
   cruz: '<path d="M6.4 2.4h3.2v4h4v3.2h-4v4H6.4v-4h-4V6.4h4z"/>',
 });

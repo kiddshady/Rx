@@ -74,6 +74,25 @@ app.whenReady().then(async () => {
     presion: '124/80', peso: '67 kg',
   });
 
+  for (const e of [
+    { nombre: 'Hemograma completo', aclaracion: 'Con ayuno de 8 horas' },
+    { nombre: 'Hepatograma', aclaracion: 'Con ayuno de 8 horas' },
+    { nombre: 'TSH y T4 libre' },
+    { nombre: 'Ionograma plasmático' },
+    { nombre: 'Electrocardiograma' },
+  ]) db.estudios.save(e);
+
+  db.ordenes.emitir({
+    paciente_id: gomez.id, fecha: '2026-07-30',
+    diagnostico: 'F32 — Episodio depresivo. Control previo al ajuste de dosis.',
+    observaciones: 'Traer los resultados a la próxima consulta.',
+    items: [
+      { nombre: 'Hemograma completo', aclaracion: 'Con ayuno de 8 horas' },
+      { nombre: 'Hepatograma', aclaracion: 'Con ayuno de 8 horas' },
+      { nombre: 'TSH y T4 libre' },
+    ],
+  });
+
   db.recetas.emitir({
     paciente_id: gomez.id, fecha: '2026-07-30', plantilla: 'clasica',
     items: [
@@ -139,6 +158,35 @@ app.whenReady().then(async () => {
 
   await js(`document.querySelector('.ox-navitem[data-view="recetas"]').click()`);
   await sleep(700); await foto('7-recetas');
+
+  // La orden se arma desde la ficha, igual que la receta: así la captura la
+  // muestra con el paciente ya puesto y la hoja llena.
+  await js(`document.querySelector('.ox-navitem[data-view="pacientes"]').click()`);
+  await sleep(700);
+  await js(`[...document.querySelectorAll('[data-ficha]')]
+             .find(e => e.textContent.includes('GÓMEZ')).click()`);
+  await sleep(900);
+  await js(`document.getElementById('f-orden').click()`);
+  await sleep(1000);
+  await js(`(() => {
+    const poner = (sel, v) => { const el = document.querySelector(sel);
+      el.value = v; el.dispatchEvent(new Event('input', {bubbles:true})); };
+    poner('input[data-campo="nombre"][data-i="0"]', 'Hemograma completo');
+    poner('input[data-campo="aclaracion"][data-i="0"]', 'Con ayuno de 8 horas');
+    document.getElementById('o-agregar').click();
+    poner('input[data-campo="nombre"][data-i="1"]', 'Hepatograma');
+    document.getElementById('o-agregar').click();
+    poner('input[data-campo="nombre"][data-i="2"]', 'TSH y T4 libre');
+    poner('#o-diagnostico', 'F32 — Control previo al ajuste de dosis');
+    poner('#o-observaciones', 'Traer los resultados a la próxima consulta');
+  })()`);
+  await sleep(800); await foto('8-orden');
+
+  await js(`document.querySelector('.ox-navitem[data-view="ordenes"]').click()`);
+  await sleep(700); await foto('9-ordenes');
+
+  await js(`document.querySelector('.ox-navitem[data-view="estudios"]').click()`);
+  await sleep(700); await foto('10-estudios');
 
   win.destroy();
   try { fs.rmSync(datos, { recursive: true, force: true }); } catch { /* Windows */ }

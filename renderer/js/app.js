@@ -19,7 +19,9 @@ import { S, refrescar, pintarChrome } from './tienda.js';
 import { vistaTablero } from './vistas/tablero.js';
 import { vistaPacientes, vistaFicha } from './vistas/pacientes.js';
 import { vistaRecetas, vistaReceta } from './vistas/recetas.js';
+import { vistaOrdenes, vistaOrden } from './vistas/ordenes.js';
 import { vistaMedicamentos } from './vistas/medicamentos.js';
+import { vistaEstudios } from './vistas/estudios.js';
 import { vistaAjustes } from './vistas/ajustes.js';
 
 const api = window.onyx;
@@ -81,8 +83,11 @@ function registrarComandos() {
   Palette.register([
     { id: 'nueva-receta', label: 'Nueva receta', group: 'Recetas', icon: 'plus', run: () => Router.go('receta') },
     { id: 'recetas', label: 'Historial de recetas', group: 'Recetas', icon: 'file', run: () => Router.go('recetas') },
+    { id: 'nueva-orden', label: 'Nueva orden de estudios', group: 'Órdenes', icon: 'plus', run: () => Router.go('orden') },
+    { id: 'ordenes', label: 'Historial de órdenes', group: 'Órdenes', icon: 'orden', run: () => Router.go('ordenes') },
     { id: 'pacientes', label: 'Pacientes', group: 'Ir a', icon: 'users', run: () => Router.go('pacientes') },
     { id: 'medicamentos', label: 'Medicamentos', group: 'Ir a', icon: 'pill', run: () => Router.go('medicamentos') },
+    { id: 'estudios', label: 'Estudios', group: 'Ir a', icon: 'estudio', run: () => Router.go('estudios') },
     { id: 'ajustes', label: 'Ajustes', group: 'Ir a', icon: 'settings', run: () => Router.go('ajustes') },
     { id: 'bloquear', label: 'Bloquear la app', group: 'Seguridad', icon: 'lock', run: () => rx.sesion.bloquear() },
     {
@@ -166,7 +171,10 @@ async function boot() {
     ficha:        { view: vistaFicha, nav: 'pacientes' },
     recetas:      { view: vistaRecetas },
     receta:       { view: vistaReceta, nav: 'recetas' },
+    ordenes:      { view: vistaOrdenes },
+    orden:        { view: vistaOrden, nav: 'ordenes' },
     medicamentos: { view: vistaMedicamentos },
+    estudios:     { view: vistaEstudios },
     ajustes:      { view: vistaAjustes },
   }, document.getElementById('view'));
 
@@ -192,7 +200,7 @@ async function boot() {
     /* Se recuerda la sección, nunca el parámetro: guardar "ficha/a3f9…" haría
        que la app abriera sola en el paciente que se estaba mirando, que es
        exactamente lo que no querés que pase si la abrís delante de otro. */
-    if (name === 'ficha' || name === 'receta') return;
+    if (name === 'ficha' || name === 'receta' || name === 'orden') return;
     api.settings.save({ ultimaVista: name }).catch(() => { /* preferencia, no dato */ });
   });
 

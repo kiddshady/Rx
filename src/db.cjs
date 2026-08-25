@@ -18,6 +18,9 @@
    guarda los datos del paciente y del profesional tal como se imprimieron, y
    la reimpresión los lee de ahí y no de las tablas vivas. Las claves foráneas
    quedan solo para poder listar "las recetas de esta paciente".
+
+   La orden de estudios se guarda con exactamente la misma regla: es otro papel
+   que ya salió por la impresora, así que también se congela.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const fs = require('node:fs');
@@ -29,7 +32,7 @@ const rutas = require('./rutas.cjs');
 /** @type {import('better-sqlite3-multiple-ciphers').Database | null} */
 let db = null;
 
-const ESQUEMA = 1;
+const ESQUEMA = 2;
 
 function id() { return crypto.randomBytes(8).toString('hex'); }
 function ahora() { return new Date().toISOString(); }
@@ -50,6 +53,47 @@ function normalizar(...partes) {
 }
 
 /* ── Apertura ────────────────────────────────────────────────────────────── */
+
+/* Las tablas que trajo el esquema 2: la orden médica de estudios y su catálogo.
+   Viven en una constante porque las necesitan DOS caminos —la base que se crea
+   de cero y la migración de una que ya existía— y si el DDL se escribiera dos
+   veces, el día que uno cambie el otro queda atrás sin que nada se queje.
+
+   `orden_item.posicion` y no `orden`, que es como se llama en `receta_item`:
+   acá la tabla padre YA se llama `orden`, y una columna `orden` al lado de
+   `orden_id` se lee como si guardara la orden, no el lugar en la lista. */
+const ESQUEMA_2 = `
+  CREATE TABLE estudio (
+    id         TEXT PRIMARY KEY,
+    nombre     TEXT NOT NULL,
+    aclaracion TEXT NOT NULL DEFAULT '',
+    busqueda   TEXT NOT NULL DEFAULT '',
+    usos       INTEGER NOT NULL DEFAULT 0,
+    creado     TEXT NOT NULL
+  );
+  CREATE INDEX idx_estudio_uso ON estudio (usos DESC, nombre);
+
+  CREATE TABLE orden (
+    id            TEXT PRIMARY KEY,
+    paciente_id   TEXT REFERENCES paciente(id) ON DELETE SET NULL,
+    fecha         TEXT NOT NULL,
+    diagnostico   TEXT NOT NULL DEFAULT '',
+    observaciones TEXT NOT NULL DEFAULT '',
+    snapshot      TEXT NOT NULL,
+    creado        TEXT NOT NULL
+  );
+  CREATE INDEX idx_orden_paciente ON orden (paciente_id, fecha DESC);
+  CREATE INDEX idx_orden_fecha    ON orden (fecha DESC);
+
+  CREATE TABLE orden_item (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    orden_id   TEXT NOT NULL REFERENCES orden(id) ON DELETE CASCADE,
+    posicion   INTEGER NOT NULL,
+    nombre     TEXT NOT NULL,
+    aclaracion TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX idx_item_orden ON orden_item (orden_id, posicion);
+`;
 
 function esquemaInicial(conn) {
   conn.exec(`
@@ -144,12 +188,13 @@ function esquemaInicial(conn) {
     );
     CREATE INDEX idx_item_receta ON receta_item (receta_id, orden);
   `);
+  conn.exec(ESQUEMA_2);
 }
 
 /* Cada entrada lleva el esquema de la versión N-1 a la N. Se corren en cadena
    dentro de una transacción, con un respaldo del archivo antes de empezar. */
 const MIGRACIONES = {
-  // 2: (conn) => conn.exec(`ALTER TABLE paciente ADD COLUMN ...`),
+  2: (conn) => conn.exec(ESQUEMA_2),
 };
 
 function respaldarAntesDeMigrar(version) {
@@ -521,6 +566,135 @@ const recetas = {
   },
 };
 
+/* ── Catálogo de estudios ────────────────────────────────────────────────── */
+
+const CAMPOS_ESTUDIO = ['nombre', 'aclaracion'];
+
+const estudios = {
+  list({ busqueda = '' } = {}) {
+    const q = normalizar(busqueda);
+    const cond = q ? `WHERE busqueda LIKE '%' || @q || '%'` : '';
+    return conexion().prepare(
+      `SELECT * FROM estudio ${cond} ORDER BY usos DESC, nombre COLLATE NOCASE`).all({ q });
+  },
+
+  save(datos) {
+    const c = conexion();
+    const nombre = String(datos?.nombre || '').trim();
+    if (!nombre) throw new Error('El estudio necesita un nombre.');
+
+    const fila = Object.fromEntries(CAMPOS_ESTUDIO.map((k) => [k, String(datos?.[k] ?? '').trim()]));
+    fila.nombre = nombre;
+    fila.busqueda = normalizar(nombre, fila.aclaracion);
+
+    if (datos?.id) {
+      fila.id = datos.id;
+      const set = [...CAMPOS_ESTUDIO, 'busqueda'].map((k) => `${k} = @${k}`).join(', ');
+      const r = c.prepare(`UPDATE estudio SET ${set} WHERE id = @id`).run(fila);
+      if (r.changes === 0) throw new Error('Ese estudio ya no existe.');
+    } else {
+      fila.id = id();
+      fila.creado = ahora();
+      const cols = [...CAMPOS_ESTUDIO, 'busqueda', 'id', 'creado'];
+      c.prepare(
+        `INSERT INTO estudio (${cols.join(', ')}) VALUES (${cols.map((k) => '@' + k).join(', ')})`,
+      ).run(fila);
+    }
+    return c.prepare('SELECT * FROM estudio WHERE id = ?').get(fila.id);
+  },
+
+  remove(eid) {
+    conexion().prepare('DELETE FROM estudio WHERE id = ?').run(eid);
+    return true;
+  },
+};
+
+/* ── Órdenes de estudios ─────────────────────────────────────────────────── */
+
+const ordenes = {
+  /** Emite una orden. Misma regla que la receta: se congela con su instantánea
+      y todo entra en una transacción — una orden a medio guardar no existe.
+
+      El diagnóstico es UNO para toda la orden y no uno por estudio: en el
+      papel, "Dx: dolor abdominal" encabeza el pedido entero, y repetirlo en
+      cada renglón sería ruido en una hoja donde el lugar escasea. */
+  emitir(datos) {
+    const c = conexion();
+    const pid = datos?.paciente_id;
+    const paciente = pid ? c.prepare('SELECT * FROM paciente WHERE id = ?').get(pid) : null;
+    if (!paciente) throw new Error('Elegí un paciente antes de emitir la orden.');
+
+    const items = (Array.isArray(datos?.items) ? datos.items : [])
+      .map((it) => ({
+        nombre: String(it?.nombre ?? '').trim(),
+        aclaracion: String(it?.aclaracion ?? '').trim(),
+      }))
+      .filter((it) => it.nombre);
+    if (items.length === 0) throw new Error('La orden necesita al menos un estudio.');
+
+    const fecha = String(datos?.fecha || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error('La fecha de la orden es inválida.');
+
+    const diagnostico = String(datos?.diagnostico ?? '').trim();
+    const observaciones = String(datos?.observaciones ?? '').trim();
+    const prof = medico.get();
+    const oid = id();
+    const creado = ahora();
+    const snapshot = JSON.stringify({
+      paciente, medico: prof, items, fecha, diagnostico, observaciones,
+    });
+
+    const guardar = c.transaction(() => {
+      c.prepare(
+        `INSERT INTO orden (id, paciente_id, fecha, diagnostico, observaciones, snapshot, creado)
+         VALUES (@id, @paciente_id, @fecha, @diagnostico, @observaciones, @snapshot, @creado)`,
+      ).run({ id: oid, paciente_id: pid, fecha, diagnostico, observaciones, snapshot, creado });
+
+      const insItem = c.prepare(
+        `INSERT INTO orden_item (orden_id, posicion, nombre, aclaracion)
+         VALUES (@orden_id, @posicion, @nombre, @aclaracion)`,
+      );
+      items.forEach((it, i) => insItem.run({ ...it, orden_id: oid, posicion: i }));
+
+      /* Igual que con los medicamentos: los estudios que se piden seguido
+         flotan solos arriba del catálogo en vez de haber que ordenarlos. */
+      const subirUso = c.prepare('UPDATE estudio SET usos = usos + 1 WHERE id = ?');
+      for (const eid of new Set((datos?.desdeCatalogo || []).filter(Boolean))) subirUso.run(eid);
+    });
+    guardar();
+
+    return ordenes.get(oid);
+  },
+
+  get(oid) {
+    const c = conexion();
+    const o = c.prepare('SELECT * FROM orden WHERE id = ?').get(oid);
+    if (!o) return null;
+    o.items = c.prepare('SELECT * FROM orden_item WHERE orden_id = ? ORDER BY posicion').all(oid);
+    try { o.snapshot = JSON.parse(o.snapshot); } catch { o.snapshot = null; }
+    return o;
+  },
+
+  list({ pacienteId = null, limite = 200 } = {}) {
+    const c = conexion();
+    const cond = pacienteId ? 'WHERE o.paciente_id = @pacienteId' : '';
+    return c.prepare(
+      `SELECT o.id, o.fecha, o.diagnostico, o.paciente_id,
+              p.apellido_nombre AS paciente,
+              (SELECT count(*) FROM orden_item i WHERE i.orden_id = o.id) AS items,
+              (SELECT group_concat(i.nombre, ' · ') FROM
+                 (SELECT nombre FROM orden_item WHERE orden_id = o.id ORDER BY posicion) i) AS detalle
+         FROM orden o LEFT JOIN paciente p ON p.id = o.paciente_id
+         ${cond} ORDER BY o.fecha DESC, o.creado DESC LIMIT @limite`,
+    ).all({ pacienteId, limite });
+  },
+
+  remove(oid) {
+    conexion().prepare('DELETE FROM orden WHERE id = ?').run(oid);
+    return true;
+  },
+};
+
 /* ── Resumen para el tablero ─────────────────────────────────────────────── */
 
 function resumen() {
@@ -530,6 +704,7 @@ function resumen() {
     pacientes: c.prepare('SELECT count(*) AS n FROM paciente WHERE archivado = 0').get().n,
     recetas: c.prepare('SELECT count(*) AS n FROM receta').get().n,
     recetasHoy: c.prepare('SELECT count(*) AS n FROM receta WHERE fecha = ?').get(hoy).n,
+    ordenes: c.prepare('SELECT count(*) AS n FROM orden').get().n,
     evoluciones: c.prepare('SELECT count(*) AS n FROM evolucion').get().n,
     ultimasRecetas: recetas.list({ limite: 6 }),
   };
@@ -537,6 +712,6 @@ function resumen() {
 
 module.exports = {
   abrir, cerrar, abierta, recifrar, respaldar, normalizar,
-  medico, pacientes, evoluciones, medicamentos, recetas, resumen,
+  medico, pacientes, evoluciones, medicamentos, recetas, estudios, ordenes, resumen,
   ESQUEMA,
 };
