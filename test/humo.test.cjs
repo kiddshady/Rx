@@ -243,6 +243,21 @@ app.whenReady().then(async () => {
   ok('la hoja mide 132 mm de ancho (A5 menos márgenes)',
     Math.abs(anchoHoja - 498.9) < 2, `${anchoHoja.toFixed(1)}px`);
 
+  /* El tope de dos medicamentos es legal, no de la hoja. La vista tiene que
+     apagar el botón antes de que se llegue a armar una receta que el proceso
+     principal va a rechazar igual. El segundo renglón queda vacío a propósito:
+     al emitir se filtra, así que lo que sigue no cambia. */
+  ok('con un medicamento todavía se puede agregar',
+    (await js(`document.getElementById('r-agregar')?.disabled`)) === false);
+  await click('#r-agregar');
+  await sleep(500);
+  ok('con dos se apaga el botón de agregar',
+    (await js(`document.getElementById('r-agregar')?.disabled`)) === true);
+  ok('y se enciende el aviso de que el tope es legal',
+    await js(`document.getElementById('r-limite')?.classList.contains('is-visible')`));
+  ok('el aviso dice cuál es el tope',
+    (await js(`document.getElementById('r-limite')?.textContent`) || '').includes('2'));
+
   await click('#r-emitir');
   await sleep(900);
   ok('ofrece imprimir o guardar después de emitir',

@@ -56,6 +56,12 @@ export async function vistaReceta(pacienteId = null) {
     rx.pacientes.list(), rx.medicamentos.list(),
   ]);
 
+  /* El tope viene de `app:info`, que lo lee de `db.cjs`: el número vive en un
+     solo lugar, el mismo que rechaza la receta si igual se intenta emitir. Se
+     resuelve acá adentro y no en el módulo porque `S.info` se carga en el
+     arranque, después de que este archivo se importa. */
+  const MAX = S.info?.maxMedicamentos || 2;
+
   const E = {
     paciente: null,
     fecha: hoyISO(),
@@ -109,6 +115,7 @@ export async function vistaReceta(pacienteId = null) {
             <div class="ox-section__title">Medicamentos</div>
             <button class="ox-btn ox-btn--secondary ox-btn--sm ox-flashable" id="r-agregar">
               <i data-icon="plus"></i> Agregar</button>
+            <span class="rx-limite" id="r-limite">Máximo ${MAX}: es un límite legal</span>
           </div>
           <div class="ox-col" id="r-items" style="gap:var(--ox-3)"></div>
         </div>
@@ -127,6 +134,8 @@ export async function vistaReceta(pacienteId = null) {
     </div>`);
 
   const elItems = document.getElementById('r-items');
+  const elAgregar = document.getElementById('r-agregar');
+  const elLimite = document.getElementById('r-limite');
   const elPrevia = document.getElementById('r-previa');
   const elAlergias = document.getElementById('r-alergias');
   const elHint = document.getElementById('r-paciente-hint');
@@ -165,10 +174,20 @@ export async function vistaReceta(pacienteId = null) {
     Icons.mount(elAlergias);
   }
 
+  /* El botón apagado y el aviso encendido son la MISMA regla que hace cumplir
+     `db.recetas.emitir()`. Están acá para que no se llegue a intentar, no para
+     reemplazarla: si esto fallara, el pedido rebota igual del otro lado. */
+  function pintarLimite() {
+    const lleno = E.items.length >= MAX;
+    elAgregar.disabled = lleno;
+    elLimite.classList.toggle('is-visible', lleno);
+  }
+
   function pintarItems() {
     elItems.innerHTML = E.items.map(filaItem).join('');
     Icons.mount(elItems);
     cablearItems();
+    pintarLimite();
     pintarPrevia();
   }
 
@@ -265,7 +284,8 @@ export async function vistaReceta(pacienteId = null) {
     E.numero = e.target.value;
   });
 
-  document.getElementById('r-agregar').onclick = () => {
+  elAgregar.onclick = () => {
+    if (E.items.length >= MAX) return;   // el botón ya está apagado; por las dudas
     E.items.push(itemVacio());
     pintarItems();
     elItems.lastElementChild?.querySelector('input')?.focus();

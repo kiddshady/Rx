@@ -284,6 +284,9 @@ function register(opciones = {}) {
     dataDir: rutas.raiz(),
     electron: process.versions.electron,
     esquema: db.ESQUEMA,
+    /* El tope legal viaja al renderer en vez de estar escrito de nuevo en la
+       vista: el numero es uno solo y sale de donde se hace cumplir. */
+    maxMedicamentos: db.MAX_MEDICAMENTOS,
   }));
 
   handle('settings:get', () => store.loadSettings());

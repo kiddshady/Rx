@@ -236,6 +236,17 @@
    laboratorio lee primero y lo que más se corta si queda angosto. */
 .rx-item--fila .rx-item__grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 
+/* El aviso del tope legal de la receta. Ocupa su lugar SIEMPRE y solo se
+   enciende: si entrara y saliera del flujo, empujaría el botón de al lado cada
+   vez que se agrega o se saca un medicamento. */
+.rx-limite {
+  font-size: var(--ox-fs-11);
+  color: var(--ox-text-3);
+  opacity: 0;
+  transition: opacity var(--ox-t-2) var(--ox-ease);
+}
+.rx-limite.is-visible { opacity: 1; }
+
 /* ── Ficha del paciente ──────────────────────────────────────────────────── */
 
 .rx-ficha {

@@ -485,6 +485,20 @@ const medicamentos = {
 
 const CAMPOS_ITEM = ['nombre', 'marca', 'dosis', 'diagnostico', 'indicaciones'];
 
+/* Una receta admite como maximo DOS medicamentos. Es un limite LEGAL, no una
+   restriccion de la hoja: la A5 entra dos porque dos es lo que se puede
+   recetar, no al reves. Por eso vive acá y no solo en la vista, igual que todo
+   lo que pasa por `conBase()` — una regla que solo cumple la interfaz es
+   cuestion de tiempo hasta que un camino nuevo se olvide de respetarla.
+
+   La orden de estudios NO tiene tope: pedir diez practicas de laboratorio es
+   normal, y ahi el unico limite es el fisico de la hoja.
+
+   Esto no toca las recetas YA emitidas. Si en una base vieja quedo alguna de
+   tres, se sigue viendo y se sigue reimprimiendo: es un documento que ya salio
+   por la impresora, y el limite es sobre lo que se emite de acá en adelante. */
+const MAX_MEDICAMENTOS = 2;
+
 const recetas = {
   /** Emite una receta: la congela con su instantánea y suma uso al catálogo.
       Todo en una transacción — una receta a medio guardar no puede existir. */
@@ -502,6 +516,10 @@ const recetas = {
       })
       .filter((it) => it.nombre);
     if (items.length === 0) throw new Error('La receta necesita al menos un medicamento.');
+    if (items.length > MAX_MEDICAMENTOS) {
+      throw new Error(
+        `Una receta no puede llevar más de ${MAX_MEDICAMENTOS} medicamentos. Para el resto, emití otra.`);
+    }
 
     const fecha = String(datos?.fecha || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error('La fecha de la receta es inválida.');
@@ -713,5 +731,5 @@ function resumen() {
 module.exports = {
   abrir, cerrar, abierta, recifrar, respaldar, normalizar,
   medico, pacientes, evoluciones, medicamentos, recetas, estudios, ordenes, resumen,
-  ESQUEMA,
+  ESQUEMA, MAX_MEDICAMENTOS,
 };

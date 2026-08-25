@@ -103,6 +103,25 @@ existan dos hojas que puedan desincronizarse. `.rx-hoja` mide exactamente el
 área imprimible de una A5 con 8 mm de margen (132 × 194 mm), y hay un test que
 lo verifica en píxeles.
 
+### El tope de dos medicamentos es legal, no de la hoja
+
+Una receta admite **como máximo dos** medicamentos. La A5 entra dos porque dos
+es lo que se puede recetar, no al revés — es una restricción de afuera, así que
+no se resuelve bajando el interlineado.
+
+Lo hace cumplir `db.recetas.emitir()`, no la vista. La vista apaga el botón
+"Agregar" y enciende el aviso para que no se llegue a intentar, pero si eso
+fallara el pedido rebota igual del otro lado: una regla que solo cumple la
+interfaz es cuestión de tiempo hasta que un camino nuevo se olvide. El número
+vive en un solo lugar (`MAX_MEDICAMENTOS`) y viaja al renderer por `app:info`.
+
+No toca las recetas **ya** emitidas: si en una base vieja quedó alguna de tres,
+se sigue viendo y se sigue reimprimiendo. Es un documento que ya salió por la
+impresora.
+
+La orden de estudios **no** tiene tope: pedir diez prácticas de laboratorio es
+normal, y ahí el único límite es el físico de la hoja.
+
 ### La orden de estudios es la receta con otro cuerpo
 
 Mismo circuito completo: paciente, hoja en vivo al lado, emitir, congelar la
@@ -180,6 +199,8 @@ sino:
   `SQLite format 3`, y ni el apellido ni la alergia aparecen en crudo);
 - que una contraseña equivocada **no** abra;
 - que la receta y la orden emitidas no cambien cuando cambian los datos vivos;
+- que una receta de **tres** medicamentos sea rechazada, que dos entren, y que
+  ese tope **no** se le aplique a la orden de estudios;
 - que el respaldo salga cifrado y se pueda reabrir;
 - que cambiar la contraseña recifre y la vieja deje de servir;
 - que el PDF de la receta tenga **dos** páginas (original y duplicado) y el de

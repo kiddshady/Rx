@@ -106,6 +106,39 @@ app.whenReady().then(async () => {
       /al menos un medicamento/);
   });
 
+  /* El tope de dos es legal, no de la hoja. Que la vista apague el botón no
+     alcanza: si la regla solo la cumple la interfaz, alcanza con que un camino
+     nuevo se olvide. Se prueba del lado que la hace cumplir. */
+  await prueba('rechaza una receta con más de 2 medicamentos', () => {
+    const p = db.pacientes.list()[0];
+    assert.throws(
+      () => db.recetas.emitir({
+        paciente_id: p.id, fecha: '2026-08-07',
+        items: [{ nombre: 'Uno' }, { nombre: 'Dos' }, { nombre: 'Tres' }],
+      }),
+      /no puede llevar más de 2/);
+  });
+
+  await prueba('pero dos sí entran', () => {
+    const p = db.pacientes.list()[0];
+    const r = db.recetas.emitir({
+      paciente_id: p.id, fecha: '2026-08-07',
+      items: [{ nombre: 'Uno' }, { nombre: 'Dos' }],
+    });
+    assert.equal(r.items.length, 2);
+    db.recetas.remove(r.id);   // no ensucia el conteo de los tests que siguen
+  });
+
+  await prueba('el tope NO se aplica a la orden de estudios', () => {
+    const p = db.pacientes.list()[0];
+    const o = db.ordenes.emitir({
+      paciente_id: p.id, fecha: '2026-08-07',
+      items: Array.from({ length: 9 }, (_, i) => ({ nombre: `Estudio ${i + 1}` })),
+    });
+    assert.equal(o.items.length, 9, 'un pedido de laboratorio largo es normal');
+    db.ordenes.remove(o.id);
+  });
+
   await prueba('rechaza una fecha inválida', () => {
     const p = db.pacientes.list()[0];
     assert.throws(
