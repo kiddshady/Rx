@@ -187,7 +187,7 @@ function orden(o) {
   let h = `<section class="rx-hoja rx-hoja--orden">`;
   h += `<div class="cuerpo">` + bloquePaciente(p, o.fecha);
 
-  h += `<div class="titulo">Solicito los siguientes estudios:</div>`;
+  h += `<div class="titulo">Solicito:</div>`;
   h += `<ol class="estudios">`;
   for (const it of items) {
     h += `<li><span class="nombre">${esc(it.nombre || '—')}</span>`;
