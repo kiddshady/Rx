@@ -322,6 +322,20 @@ app.whenReady().then(async () => {
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);
 
+  /* El subtítulo de cada vista dice cuántos hay. Durante un tiempo dijo el
+     número DOS veces ("1 1 receta") porque `plural()` ya lo trae adelante y las
+     vistas se lo anteponían igual. No lo agarra ningún test que pregunte
+     "¿existe?", así que se mira acá, con datos ya cargados: en la vuelta de las
+     vistas del principio los contadores estaban en cero y el bug no aparecía. */
+  for (const vista of ['pacientes', 'recetas', 'ordenes', 'medicamentos', 'estudios']) {
+    await click(`.ox-navitem[data-view="${vista}"]`);
+    await sleep(500);
+    const cabeza = (await js(`document.querySelector('.ox-viewhead')?.textContent || ''`))
+      .replace(/\s+/g, ' ').trim();
+    ok(`"${vista}" no repite el número en el subtítulo`,
+      !/(\b\d+) \1\b/.test(cabeza), cabeza.slice(0, 70));
+  }
+
   /* Un pedido largo no entra en la A5 y sigue en una segunda página. La previa
      no lo muestra sola —el papel simplemente se dibuja más alto— así que el
      rótulo lo tiene que decir. Es lo único de esta vista que no se ve mirando. */

@@ -152,8 +152,9 @@ export async function vistaPacientes(busqueda = '') {
 
   paint(head({
     title: 'Pacientes',
+    /* `plural()` ya trae el número adelante: no se le antepone otro. */
     sub: lista.length
-      ? `${lista.length} ${plural(lista.length, 'paciente')}`
+      ? plural(lista.length, 'paciente')
       : 'Todavía no hay pacientes cargados',
     actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="p-nuevo">
                 <i data-icon="plus"></i> Nuevo paciente</button>`,
@@ -391,7 +392,7 @@ export async function vistaFicha(id) {
             <div class="ox-iconcell"><i data-icon="file"></i></div>
             <div class="ox-listitem__main">
               <div class="ox-listitem__title ox-truncate">${esc(r.detalle || '—')}</div>
-              <div class="ox-listitem__sub">${esc(r.items)} ${plural(r.items, 'medicamento')} ·
+              <div class="ox-listitem__sub">${plural(r.items, 'medicamento')} ·
                 plantilla ${esc(r.plantilla === 'rpe' ? 'RPE' : 'Clásica')}</div>
             </div>
             <div class="ox-listitem__aside ox-num">${esc(fecha(r.fecha))}</div>
@@ -459,11 +460,25 @@ export async function vistaFicha(id) {
         Router.go('pacientes');
       } },
       { label: 'Eliminar paciente', icon: 'trash', danger: true, onSelect: async () => {
+        const emitidos = [
+          recetas.length && plural(recetas.length, 'receta'),
+          ordenes.length && plural(ordenes.length, 'orden', 'órdenes'),
+        ].filter(Boolean).join(', ');
+
         const ok = await Modal.confirm({
           title: 'Eliminar el paciente',
-          sub: `Se borran también sus ${evoluciones.length} ${plural(evoluciones.length, 'evolución', 'evoluciones')}. `
-             + `Las ${recetas.length} ${plural(recetas.length, 'receta')} ya emitidas se conservan, `
-             + 'porque son documentos que ya salieron impresos. No hay vuelta atrás.',
+          /* Cada cosa se nombra solo si existe: "0 órdenes se conservan" no
+             dice nada y encima suena a que algo falló. Y la frase no concuerda
+             con el número —"Lo ya emitido"— porque acá pueden quedar una sola
+             receta, tres órdenes, o las dos cosas. */
+          sub: (evoluciones.length
+               ? `Se borran también sus ${plural(evoluciones.length, 'evolución', 'evoluciones')}. `
+               : '')
+             + (emitidos
+               ? `Lo ya emitido se conserva (${emitidos}), porque son documentos `
+                 + 'que ya salieron impresos. '
+               : '')
+             + 'No hay vuelta atrás.',
           confirmLabel: 'Eliminar',
           danger: true,
         });

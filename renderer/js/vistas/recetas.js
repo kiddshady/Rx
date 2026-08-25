@@ -335,8 +335,11 @@ export async function vistaRecetas(recetaId = null) {
 
   paint(head({
     title: 'Recetas',
+    /* `plural()` ya trae el número adelante, así que no se le antepone otro —
+       y "emitida" concuerda a mano en vez de pasar por un segundo `plural()`,
+       que metería el número una tercera vez. */
     sub: lista.length
-      ? `${lista.length} ${plural(lista.length, 'receta')} ${plural(lista.length, 'emitida')}`
+      ? `${plural(lista.length, 'receta')} ${lista.length === 1 ? 'emitida' : 'emitidas'}`
       : 'Todavía no emitiste ninguna',
     actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="h-nueva">
                 <i data-icon="plus"></i> Nueva receta</button>`,

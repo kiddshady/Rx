@@ -79,8 +79,9 @@ export async function vistaMedicamentos(busqueda = '') {
 
   paint(head({
     title: 'Medicamentos',
+    /* `plural()` ya trae el número adelante: no se le antepone otro. */
     sub: lista.length
-      ? `${lista.length} ${plural(lista.length, 'medicamento')} en el catálogo`
+      ? `${plural(lista.length, 'medicamento')} en el catálogo`
       : 'Los que uses seguido, para no volver a tipearlos',
     actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="m-nuevo">
                 <i data-icon="plus"></i> Nuevo</button>`,
