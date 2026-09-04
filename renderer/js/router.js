@@ -92,6 +92,11 @@ export function refresh() {
   if (!route) return;
   release();
   route.view(current.param);
+  /* Se avisa igual que en go(): un refresh viene después de un cambio de
+     datos, que es justo cuando lo que escucha (contadores, statusbar) tiene
+     que rehacerse. Sin esto, borrar una receta dejaba "1 hoy" en la barra
+     hasta la próxima navegación. */
+  listeners.forEach((fn) => fn({ ...current }, { ...current }));
 }
 
 /** Se avisa después de cada navegación: (a, desde) => {} */
