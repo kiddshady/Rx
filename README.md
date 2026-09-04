@@ -127,7 +127,7 @@ normal, y ahí el único límite es el físico de la hoja.
 Mismo circuito completo: paciente, hoja en vivo al lado, emitir, congelar la
 instantánea, salir a papel o a PDF, y quedar en el historial y en la ficha. Lo
 que cambia es el medio de la hoja —el listado numerado de estudios en vez del
-`Rp./`— y que sale en **una** sola hoja: el duplicado de la receta existe
+`Rp/`— y que sale en **una** sola hoja: el duplicado de la receta existe
 porque se lo queda la farmacia, y la orden se la queda el laboratorio y listo.
 
 Por eso comparte de verdad, no "parecido": el encabezado del paciente y el pie

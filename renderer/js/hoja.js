@@ -11,7 +11,7 @@
    que salió en marzo.
 
    Son tres hojas: la receta clásica, la RPE y la orden de estudios. La orden
-   es la clásica con el listado de estudios donde va el Rp./, y por eso comparte
+   es la clásica con el listado de estudios donde va el Rp/, y por eso comparte
    con ella el encabezado del paciente y el pie de firma — literalmente las
    mismas funciones, no una copia parecida.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -100,7 +100,7 @@ function clasica(r, duplicado) {
 
   h += `<div class="cuerpo">` + bloquePaciente(p, r.fecha);
 
-  h += `<div class="rp">Rp./</div>`;
+  h += `<div class="rp">Rp/</div>`;
   for (const it of items) {
     h += `<div class="item"><div class="nombre">${esc(it.nombre || '—')}</div><div class="detalle">`;
     if (it.dosis) h += `<span>${esc(it.dosis)}</span>`;
@@ -152,7 +152,7 @@ function rpe(r, duplicado) {
     h += `</div>`;
   }
 
-  h += `<div class="encabezado-rp"><div>Rp/.</div>`;
+  h += `<div class="encabezado-rp"><div>Rp/</div>`;
   if (duplicado) h += `<div class="marca-dup">DUPLICADO</div>`;
   h += `<div>Envases</div></div>`;
 
@@ -177,7 +177,7 @@ function rpe(r, duplicado) {
 /* ── Orden de estudios ───────────────────────────────────────────────────── */
 
 /* Mismo encabezado y mismo pie que la clásica; en el medio, el listado de lo
-   que se pide en vez del Rp./. El diagnóstico y las observaciones van UNA vez,
+   que se pide en vez del Rp/. El diagnóstico y las observaciones van UNA vez,
    al final de la lista y no por renglón: es un solo pedido, no cinco. */
 function orden(o) {
   const p = o.paciente || {};

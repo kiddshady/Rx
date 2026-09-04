@@ -242,7 +242,7 @@
 /* Solo lo que la clásica no tiene: el título del pedido, la lista numerada y
    el cierre con diagnóstico y observaciones. El resto lo hereda arriba. */
 
-/* Mismo tratamiento que el "Rp./" de la clásica: es el mismo rol en la hoja
+/* Mismo tratamiento que el "Rp/" de la clásica: es el mismo rol en la hoja
    —acá empieza lo que se pide— y tiene que leerse igual de fuerte. */
 .rx-hoja--orden .titulo {
   margin: 5mm 0 3mm;
