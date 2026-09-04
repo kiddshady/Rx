@@ -201,6 +201,23 @@ app.whenReady().then(async () => {
     await js(`!!document.querySelector('#f-alergias')
               && document.getElementById('f-alergias').closest('.ox-field').classList.contains('rx-campo-alerta')`));
 
+  /* La previa vive en una columna de grilla. Durante un tiempo esa columna
+     crecía hasta el alto de las hojas y desbordaba la vista: el duplicado
+     quedaba abajo, cortado, y no había scroll que llegara. Se mide que el
+     panel termine dentro de la ventana y que el scroll llegue al fondo. */
+  const previaContenida = (id) => js(`(() => {
+    const el = document.getElementById(${JSON.stringify(id)});
+    const panel = el.closest('.rx-previa').getBoundingClientRect();
+    el.scrollTop = 1e6; const llega = el.scrollTop; el.scrollTop = 0;
+    return { fondo: Math.round(panel.bottom), ventana: window.innerHeight,
+             visible: el.clientHeight, contenido: el.scrollHeight, llega }; })()`);
+  /* Y la hoja que se abre desde el historial va centrada en el modal: un
+     bloque suelto ocupa todo el ancho y la dejaba pegada a la izquierda. */
+  const hojaCentrada = () => js(`(() => {
+    const b = document.querySelector('.ox-modal__body').getBoundingClientRect();
+    const h = document.querySelector('.ox-modal .rx-hoja').getBoundingClientRect();
+    return { cuerpo: Math.round(b.x + b.width / 2), hoja: Math.round(h.x + h.width / 2) }; })()`);
+
   /* ── 5. Emitir una receta ─────────────────────────────────────────────── */
   console.log('\n5. Receta');
   await click('#f-receta');
@@ -230,6 +247,12 @@ app.whenReady().then(async () => {
     await js(`document.getElementById('r-previa').textContent.includes('Sertralina 50 mg')`));
   ok('la previa marca el duplicado',
     await js(`document.getElementById('r-previa').textContent.includes('Duplicado')`));
+
+  const contenida = await previaContenida('r-previa');
+  ok('el panel de la previa termina dentro de la ventana',
+    contenida.fondo <= contenida.ventana, JSON.stringify(contenida));
+  ok('y scrollea hasta el duplicado',
+    contenida.contenido > contenida.visible && contenida.llega > 0, JSON.stringify(contenida));
 
   /* La hoja tiene que medir el área imprimible de una A5 con 8mm de margen:
      132mm de ancho. A 96 dpi son 498.9 px. Si esto se corre, lo que se ve en
@@ -279,6 +302,9 @@ app.whenReady().then(async () => {
     await js(`document.querySelector('.ox-modal')?.textContent.includes('Receta del')`));
   ok('la hoja guardada muestra el medicamento',
     await js(`document.querySelector('.ox-modal .rx-hoja')?.textContent.includes('Sertralina')`));
+  const centrada = await hojaCentrada();
+  ok('la hoja guardada queda centrada en el modal',
+    Math.abs(centrada.cuerpo - centrada.hoja) <= 2, JSON.stringify(centrada));
   await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);
@@ -313,6 +339,9 @@ app.whenReady().then(async () => {
   ok('y lo numera', await js(`!!document.querySelector('#o-previa .estudios li')`));
   ok('el rótulo del panel dice que entra en una hoja',
     (await js(`document.getElementById('o-hojas')?.textContent`)) === 'una hoja');
+  const contenidaOrden = await previaContenida('o-previa');
+  ok('el panel de la previa de la orden termina dentro de la ventana',
+    contenidaOrden.fondo <= contenidaOrden.ventana, JSON.stringify(contenidaOrden));
 
   await click('#o-emitir');
   await sleep(900);
@@ -333,6 +362,9 @@ app.whenReady().then(async () => {
     await js(`document.querySelector('.ox-modal')?.textContent.includes('Orden del')`));
   ok('la hoja guardada muestra el estudio',
     await js(`document.querySelector('.ox-modal .rx-hoja')?.textContent.includes('Hemograma')`));
+  const centradaOrden = await hojaCentrada();
+  ok('la hoja de la orden queda centrada en el modal',
+    Math.abs(centradaOrden.cuerpo - centradaOrden.hoja) <= 2, JSON.stringify(centradaOrden));
   await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);

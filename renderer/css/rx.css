@@ -166,9 +166,15 @@
    contenedor toma el alto real de la hoja escalada y el scroll da lo que tiene
    que dar. Con scale() habría que compensar el alto a mano y siempre queda mal
    en algún tamaño de ventana. */
+/* `width: fit-content` para que el papel mida lo que mide la hoja también
+   fuera del panel de la previa. Adentro es un ítem de flex y ya se ajusta
+   solo; en el modal de la receta es un bloque suelto, y un bloque suelto
+   ocupa todo el ancho: la hoja quedaba pegada a la izquierda y el
+   `margin: 0 auto` no tenía nada que repartir. */
 .rx-previa__papel {
   zoom: var(--rx-zoom, .78);
   flex: none;
+  width: fit-content;
   box-shadow: 0 8px 28px rgb(0 0 0 / .45);
   transition: zoom var(--ox-t-2) var(--ox-ease);
 }
@@ -193,7 +199,14 @@
   flex-direction: column;
   gap: var(--ox-4);
 }
-.rx-receta__previa { min-width: 0; display: flex; }
+/* `min-height: 0` es lo que deja que la columna mida lo que mide la fila y
+   no lo que miden las dos hojas. Sin él, el mínimo automático del ítem de
+   grilla es el alto de su contenido: la columna crecía hasta las dos hojas,
+   desbordaba la vista, y el panel de adentro nunca recibía un alto acotado.
+   Resultado: el duplicado quedaba abajo, cortado, y no había scroll que
+   llegara. El formulario de al lado no lo sufría porque scrollea, y un
+   contenedor con scroll tiene mínimo cero de fábrica. */
+.rx-receta__previa { min-width: 0; min-height: 0; display: flex; }
 
 /* Un medicamento de la receta, o un estudio de la orden. */
 .rx-item {
