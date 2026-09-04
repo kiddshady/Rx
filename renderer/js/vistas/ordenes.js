@@ -339,7 +339,12 @@ export async function vistaOrdenes(ordenId = null) {
     sub: lista.length
       ? `${plural(lista.length, 'orden', 'órdenes')} ${lista.length === 1 ? 'emitida' : 'emitidas'}`
       : 'Todavía no emitiste ninguna',
-    actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="ho-nueva">
+    /* Igual que en recetas: el de borrar todo solo existe cuando hay algo que
+       borrar, y va en fantasma. El rojo aparece recién en la confirmación. */
+    actions: `${lista.length ? `
+              <button class="ox-btn ox-btn--ghost ox-flashable" id="ho-vaciar">
+                <i data-icon="trash"></i> Borrar historial</button>` : ''}
+              <button class="ox-btn ox-btn--primary ox-flashable" id="ho-nueva">
                 <i data-icon="plus"></i> Nueva orden</button>`,
   }) + `
     <div class="ox-scroll ox-grow ox-scroll--line-bottom">
@@ -358,11 +363,16 @@ export async function vistaOrdenes(ordenId = null) {
                     data-tip="Imprimir"><i data-icon="printer"></i></button>
             <button class="ox-iconbtn ox-iconbtn--sm" data-pdf="${esc(o.id)}"
                     data-tip="Guardar PDF"><i data-icon="download"></i></button>
+            <button class="ox-iconbtn ox-iconbtn--sm" data-borrar="${esc(o.id)}"
+                    data-tip="Eliminar"><i data-icon="trash"></i></button>
           </div>
         </div>`).join('')}</div>`}
     </div>`);
 
   document.getElementById('ho-nueva').onclick = () => Router.go('orden');
+
+  const elVaciar = document.getElementById('ho-vaciar');
+  if (elVaciar) elVaciar.onclick = () => vaciarHistorial(lista.length);
 
   for (const el of document.querySelectorAll('[data-abrir]')) {
     const ver = () => verOrden(el.dataset.abrir);
@@ -389,7 +399,54 @@ export async function vistaOrdenes(ordenId = null) {
     }, { errorTitle: 'No se pudo generar el PDF' });
   }
 
+  for (const b of document.querySelectorAll('[data-borrar]')) {
+    /* La fila sale animada y recién después se repinta la lista. */
+    b.onclick = () => borrarOrden(b.dataset.borrar, {
+      antesDeRepintar: (listo) => exit(b.closest('.ox-listitem'), { onDone: listo }),
+    });
+  }
+
   if (ordenId) verOrden(ordenId);
+}
+
+/* ══ Borrar ══════════════════════════════════════════════════════════════════ */
+
+/** Confirma y borra UNA orden. Lo comparten el tacho de la fila y el botón
+    del modal de la orden. Devuelve si se borró. */
+async function borrarOrden(id, { antesDeRepintar = (listo) => listo() } = {}) {
+  const ok = await Modal.confirm({
+    title: 'Eliminar la orden',
+    sub: 'Se borra del historial. Si ya salió impresa, el papel sigue existiendo. No hay vuelta atrás.',
+    confirmLabel: 'Eliminar',
+    danger: true,
+  });
+  if (!ok) return false;
+  const hecho = await attempt(() => rx.ordenes.remove(id), { errorTitle: 'No se pudo eliminar' });
+  if (!hecho) return false;
+  Toast.show({ title: 'Orden eliminada', icon: 'trash' });
+  antesDeRepintar(() => Router.refresh());
+  return true;
+}
+
+/** Borra el historial de órdenes ENTERO, escribiendo la palabra. */
+async function vaciarHistorial(cuantas) {
+  const ok = await Modal.confirmTyped({
+    title: 'Borrar todo el historial',
+    sub: `Se borran ${plural(cuantas, 'orden', 'órdenes')} ${cuantas === 1 ? 'emitida' : 'emitidas'}. `
+      + 'Los pacientes, el catálogo de estudios y las recetas quedan. Si querés conservarlas, '
+      + 'guardá antes un respaldo desde Ajustes. No hay vuelta atrás.',
+    word: 'borrar',
+    confirmLabel: 'Borrar historial',
+  });
+  if (!ok) return;
+  const n = await attempt(() => rx.ordenes.vaciar(), { errorTitle: 'No se pudo borrar el historial' });
+  if (n == null) return;
+  Toast.show({
+    title: 'Historial borrado',
+    text: `${plural(n, 'orden', 'órdenes')} ${n === 1 ? 'eliminada' : 'eliminadas'}.`,
+    icon: 'trash',
+  });
+  Router.refresh();
 }
 
 /** Muestra la hoja tal como se emitió, desde la instantánea. */
@@ -425,16 +482,7 @@ async function verOrden(id) {
   });
 
   if (val === 'borrar') {
-    const ok = await Modal.confirm({
-      title: 'Eliminar la orden',
-      sub: 'Se borra del historial. Si ya salió impresa, el papel sigue existiendo. No hay vuelta atrás.',
-      confirmLabel: 'Eliminar',
-      danger: true,
-    });
-    if (!ok) return;
-    await attempt(() => rx.ordenes.remove(id));
-    Toast.show({ title: 'Orden eliminada', icon: 'trash' });
-    Router.refresh();
+    await borrarOrden(id);
   } else if (val === 'pdf') {
     await attempt(async () => {
       const res = await rx.ordenes.pdf(id);

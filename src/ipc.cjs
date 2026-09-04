@@ -194,6 +194,7 @@ function registrarDominio() {
   handle('ordenes:get', conBase((id) => db.ordenes.get(id)));
   handle('ordenes:list', conBase((opts) => db.ordenes.list(opts || {})));
   handle('ordenes:remove', conBase((id) => db.ordenes.remove(id)));
+  handle('ordenes:vaciar', conBase(() => db.ordenes.vaciar()));
   handle('ordenes:pdf', conBase((id) => impresion.aPdfOrden(ventana(), id)));
   handle('ordenes:imprimir', conBase((id) => impresion.aImpresoraOrden(id)));
 }

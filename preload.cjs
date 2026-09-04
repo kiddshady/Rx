@@ -113,6 +113,7 @@ contextBridge.exposeInMainWorld('rx', {
     get: (id) => call('ordenes:get', id),
     list: (opts) => call('ordenes:list', opts),
     remove: (id) => call('ordenes:remove', id),
+    vaciar: () => call('ordenes:vaciar'),
     pdf: (id) => call('ordenes:pdf', id),
     imprimir: (id) => call('ordenes:imprimir', id),
   },

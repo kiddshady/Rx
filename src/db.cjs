@@ -718,6 +718,12 @@ const ordenes = {
     conexion().prepare('DELETE FROM orden WHERE id = ?').run(oid);
     return true;
   },
+
+  /** Borra TODAS las órdenes emitidas. Misma regla que en las recetas: los
+      ítems se van por la cascada, y pacientes, catálogo y recetas quedan. */
+  vaciar() {
+    return conexion().prepare('DELETE FROM orden').run().changes;
+  },
 };
 
 /* ── Resumen para el tablero ─────────────────────────────────────────────── */

@@ -283,78 +283,6 @@ app.whenReady().then(async () => {
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);
 
-  /* ── 6b. Borrar ───────────────────────────────────────────────────────── */
-  console.log('\n6b. Borrar');
-  /* Una segunda receta, para que quede algo que borrar de a una y algo que
-     borrar en bloque. Sale de la ficha, como la primera. */
-  await click('.ox-navitem[data-view="pacientes"]');
-  await sleep(700);
-  await click('[data-ficha]');
-  await sleep(900);
-  await click('#f-receta');
-  await sleep(900);
-  await escribir('input[data-campo="nombre"][data-i="0"]', 'Clonazepam 0,5 mg');
-  await click('#r-emitir');
-  await sleep(900);
-  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
-             .find(b => b.textContent.trim() === 'Después')?.click()`);
-  await sleep(1200);
-  ok('hay dos recetas en el historial',
-    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 2);
-  ok('cada fila tiene su tacho',
-    (await js(`document.querySelectorAll('[data-borrar]').length`)) === 2);
-
-  /* De a una: el tacho de la fila pide confirmación y borra. */
-  await click('[data-borrar]');
-  await sleep(700);
-  ok('el tacho pide confirmación',
-    await js(`document.querySelector('.ox-modal')?.textContent.includes('Eliminar la receta')`));
-  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
-             .find(b => b.textContent.trim() === 'Cancelar')?.click()`);
-  await sleep(600);
-  ok('cancelar no borra nada',
-    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 2);
-  await click('[data-borrar]');
-  await sleep(700);
-  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
-             .find(b => b.textContent.trim() === 'Eliminar')?.click()`);
-  await sleep(1400);
-  ok('confirmar borra esa receta y deja la otra',
-    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 1);
-
-  /* En bloque: el botón existe solo con recetas, y el modal exige escribir la
-     palabra. Se mide que el botón de confirmar esté APAGADO hasta entonces:
-     una confirmación escrita que igual deja apretar no confirma nada. */
-  ok('el botón de borrar historial está', await js(`!!document.getElementById('h-vaciar')`));
-  await click('#h-vaciar');
-  await sleep(700);
-  const cajaVaciar = await caja('.ox-modal');
-  ok('el modal de borrar historial cae dentro de la ventana',
-    !!cajaVaciar && cajaVaciar.y >= 0 && cajaVaciar.x >= 0
-    && cajaVaciar.y + cajaVaciar.h <= H + 1 && cajaVaciar.x + cajaVaciar.w <= W + 1,
-    JSON.stringify(cajaVaciar));
-  const botonVaciar = `[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
-             .find(b => b.textContent.trim() === 'Borrar historial')`;
-  ok('el botón de confirmar arranca apagado', (await js(`${botonVaciar}?.disabled`)) === true);
-  ok('el foco está en el campo de la palabra',
-    await js(`document.activeElement === document.querySelector('.ox-modal input')`));
-  await escribir('.ox-modal input', 'borra');
-  await sleep(200);
-  ok('con la palabra a medias sigue apagado', (await js(`${botonVaciar}?.disabled`)) === true);
-  await escribir('.ox-modal input', 'BORRAR');
-  await sleep(200);
-  ok('con la palabra completa se enciende', (await js(`${botonVaciar}?.disabled`)) === false);
-  await js(`${botonVaciar}?.click()`);
-  await sleep(1400);
-  ok('el historial quedó vacío',
-    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 0
-    && await js(`!!document.querySelector('.ox-empty')`));
-  ok('y el botón de borrar historial se fue con él', !(await js(`!!document.getElementById('h-vaciar')`)));
-  ok('la statusbar dejó de contar recetas de hoy',
-    (await js(`document.getElementById('stat-hoy')?.textContent`)) === '0');
-  ok('el paciente sigue en el rail',
-    (await js(`document.getElementById('cuenta-pacientes')?.textContent`)) === '1');
-
   /* ── 7. Emitir una orden de estudios ──────────────────────────────────── */
   console.log('\n7. Orden');
   await click('.ox-navitem[data-view="pacientes"]');
@@ -445,6 +373,104 @@ app.whenReady().then(async () => {
     (await js(`document.querySelectorAll('#o-previa .rx-hoja').length`)) === 1);
   ok('pero la previa avisa que no va a entrar',
     (await js(`document.getElementById('o-hojas')?.textContent`) || '').includes('segunda hoja'));
+
+  /* ── 7b. Borrar ───────────────────────────────────────────────────────── */
+  console.log('\n7b. Borrar');
+  /* Va después del chequeo de los subtítulos a propósito: ese mira las vistas
+     CON datos, y borrar antes se los sacaría. Una segunda receta y una segunda
+     orden, para que quede algo que borrar de a una y algo que borrar en
+     bloque. Salen de la ficha, como las primeras. */
+  const emitirDesdeFicha = async (boton, emitir, valor) => {
+    await click('.ox-navitem[data-view="pacientes"]');
+    await sleep(700);
+    await click('[data-ficha]');
+    await sleep(900);
+    await click(boton);
+    await sleep(900);
+    await escribir('input[data-campo="nombre"][data-i="0"]', valor);
+    await click(emitir);
+    await sleep(900);
+    await apretar('Después');
+    await sleep(1200);
+  };
+  const cuantos = () => js(`document.querySelectorAll('[data-abrir]').length`);
+  const apretar = (etiqueta) => js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === ${JSON.stringify(etiqueta)})?.click()`);
+  const apagado = (etiqueta) => js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === ${JSON.stringify(etiqueta)})?.disabled`);
+
+  /* Recetas. */
+  await emitirDesdeFicha('#f-receta', '#r-emitir', 'Clonazepam 0,5 mg');
+  ok('hay dos recetas en el historial', (await cuantos()) === 2);
+  ok('cada fila tiene su tacho',
+    (await js(`document.querySelectorAll('[data-borrar]').length`)) === 2);
+
+  /* De a una: el tacho de la fila pide confirmación y borra. */
+  await click('[data-borrar]');
+  await sleep(700);
+  ok('el tacho pide confirmación',
+    await js(`document.querySelector('.ox-modal')?.textContent.includes('Eliminar la receta')`));
+  await apretar('Cancelar');
+  await sleep(600);
+  ok('cancelar no borra nada', (await cuantos()) === 2);
+  await click('[data-borrar]');
+  await sleep(700);
+  await apretar('Eliminar');
+  await sleep(1400);
+  ok('confirmar borra esa receta y deja la otra', (await cuantos()) === 1);
+
+  /* En bloque: el botón existe solo con recetas, y el modal exige escribir la
+     palabra. Se mide que el botón de confirmar esté APAGADO hasta entonces:
+     una confirmación escrita que igual deja apretar no confirma nada. */
+  ok('el botón de borrar historial está', await js(`!!document.getElementById('h-vaciar')`));
+  await click('#h-vaciar');
+  await sleep(700);
+  const cajaVaciar = await caja('.ox-modal');
+  ok('el modal de borrar historial cae dentro de la ventana',
+    !!cajaVaciar && cajaVaciar.y >= 0 && cajaVaciar.x >= 0
+    && cajaVaciar.y + cajaVaciar.h <= H + 1 && cajaVaciar.x + cajaVaciar.w <= W + 1,
+    JSON.stringify(cajaVaciar));
+  ok('el botón de confirmar arranca apagado', (await apagado('Borrar historial')) === true);
+  ok('el foco está en el campo de la palabra',
+    await js(`document.activeElement === document.querySelector('.ox-modal input')`));
+  await escribir('.ox-modal input', 'borra');
+  await sleep(200);
+  ok('con la palabra a medias sigue apagado', (await apagado('Borrar historial')) === true);
+  await escribir('.ox-modal input', 'BORRAR');
+  await sleep(200);
+  ok('con la palabra completa se enciende', (await apagado('Borrar historial')) === false);
+  await apretar('Borrar historial');
+  await sleep(1400);
+  ok('el historial quedó vacío',
+    (await cuantos()) === 0 && await js(`!!document.querySelector('.ox-empty')`));
+  ok('y el botón de borrar historial se fue con él', !(await js(`!!document.getElementById('h-vaciar')`)));
+  ok('la statusbar dejó de contar recetas de hoy',
+    (await js(`document.getElementById('stat-hoy')?.textContent`)) === '0');
+  ok('el paciente sigue en el rail',
+    (await js(`document.getElementById('cuenta-pacientes')?.textContent`)) === '1');
+
+  /* Órdenes: el mismo circuito calcado, así que se prueba igual. */
+  await emitirDesdeFicha('#f-orden', '#o-emitir', 'Glucemia');
+  ok('hay dos órdenes en el historial', (await cuantos()) === 2);
+  await click('[data-borrar]');
+  await sleep(700);
+  ok('el tacho de la orden pide confirmación',
+    await js(`document.querySelector('.ox-modal')?.textContent.includes('Eliminar la orden')`));
+  await apretar('Eliminar');
+  await sleep(1400);
+  ok('confirmar borra esa orden y deja la otra', (await cuantos()) === 1);
+  await click('#ho-vaciar');
+  await sleep(700);
+  ok('el botón de confirmar de las órdenes arranca apagado', (await apagado('Borrar historial')) === true);
+  await escribir('.ox-modal input', 'borrar');
+  await sleep(200);
+  ok('y se enciende con la palabra', (await apagado('Borrar historial')) === false);
+  await apretar('Borrar historial');
+  await sleep(1400);
+  ok('el historial de órdenes quedó vacío',
+    (await cuantos()) === 0 && await js(`!!document.querySelector('.ox-empty')`));
+  ok('el rail ya no cuenta órdenes',
+    (await js(`document.getElementById('cuenta-ordenes')?.textContent`)) === '0');
 
   /* ── 8. Bloqueo ───────────────────────────────────────────────────────── */
   console.log('\n8. Bloqueo');

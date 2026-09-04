@@ -377,6 +377,28 @@ app.whenReady().then(async () => {
     assert.equal(db.resumen().recetas, 0, 'el resumen sigue contando recetas');
   });
 
+  await prueba('vaciar las órdenes borra todas las órdenes y nada más', () => {
+    const p = db.pacientes.list()[0];
+    const r = db.recetas.emitir({ paciente_id: p.id, fecha: '2026-08-09', items: [{ nombre: 'Queda' }] });
+    /* Dos, porque la prueba de migración que corre antes recrea la tabla de
+       órdenes vacía: lo que había no cuenta. */
+    db.ordenes.emitir({ paciente_id: p.id, fecha: '2026-08-09', items: [{ nombre: 'Glucemia' }] });
+    db.ordenes.emitir({ paciente_id: p.id, fecha: '2026-08-10', items: [{ nombre: 'TSH' }] });
+    const ordenesAntes = db.ordenes.list().length;
+    const pacientesAntes = db.pacientes.list().length;
+    const estudiosAntes = db.estudios.list().length;
+    assert.ok(ordenesAntes >= 2, 'tendría que haber al menos las dos nuevas');
+
+    const n = db.ordenes.vaciar();
+    assert.equal(n, ordenesAntes, 'no devolvió cuántas borró');
+    assert.equal(db.ordenes.list().length, 0, 'quedaron órdenes');
+    assert.equal(db.recetas.list().length, 1, 'se llevó recetas');
+    assert.ok(db.recetas.get(r.id), 'la receta dejó de ser consultable');
+    assert.equal(db.pacientes.list().length, pacientesAntes, 'se llevó pacientes');
+    assert.equal(db.estudios.list().length, estudiosAntes, 'se llevó el catálogo de estudios');
+    assert.equal(db.resumen().ordenes, 0, 'el resumen sigue contando órdenes');
+  });
+
   db.cerrar();
   try { fs.rmSync(carpeta, { recursive: true, force: true }); } catch { /* Windows a veces la tiene tomada */ }
 
