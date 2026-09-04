@@ -231,6 +231,7 @@ export function designHTML() {
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-menu">Menú</button>
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-modal">Modal</button>
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-confirm">Confirmación destructiva</button>
+          <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-confirm-typed">Confirmación escrita</button>
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-toast">Toast</button>
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-toast-err">Toast de error</button>
           <button class="ox-btn ox-btn--secondary ox-flashable" id="demo-palette"
@@ -502,6 +503,15 @@ export function wireDesign(rootEl) {
       sub: 'Se borra también su historial. Esto no se puede deshacer.',
       confirmLabel: 'Eliminar',
       danger: true,
+    }).then((ok) => ok && Toast.error('Vitrina', 'No se borró nada: acá solo se muestran los primitivos.'));
+  });
+
+  rootEl.querySelector('#demo-confirm-typed')?.addEventListener('click', () => {
+    Modal.confirmTyped({
+      title: 'Borrar todo el historial',
+      sub: 'Para lo que borra mucho de una vez: el botón queda apagado hasta que la palabra coincide.',
+      word: 'borrar',
+      confirmLabel: 'Borrar todo',
     }).then((ok) => ok && Toast.error('Vitrina', 'No se borró nada: acá solo se muestran los primitivos.'));
   });
 

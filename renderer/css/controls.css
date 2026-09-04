@@ -68,6 +68,9 @@
   box-shadow: var(--ox-e1);
 }
 .ox-btn--danger-solid:hover { background: #a04a50; }
+/* Apagado no puede seguir siendo rojo: un botón rojo que no responde se lee
+   como roto. Baja a superficie neutra, igual que el primario apagado. */
+.ox-btn--danger-solid:disabled { background: var(--ox-s3); color: var(--ox-text-4); box-shadow: none; }
 
 /* Tamaños */
 .ox-btn--sm { height: 24px; padding: 0 var(--ox-2); font-size: var(--ox-fs-11); }

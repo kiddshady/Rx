@@ -308,6 +308,7 @@ Toast.error(title, text);
 Menu.show(anchorEl, items, { align: 'end' });
 await Modal.show({ title, sub, body, actions, width, dismissible });
 await Modal.confirm({ title, sub, confirmLabel, danger });
+await Modal.confirmTyped({ title, sub, word, confirmLabel, danger });
 Palette.init(); Palette.register([...]); Palette.toggle();
 ```
 
@@ -320,6 +321,10 @@ más `{ sep: true }` y `{ groupLabel }`.
 **Modal**: devuelve una promesa con el `value` del botón que se apretó (`null`
 si se cerró). El `body` puede ser HTML o un `Node` — si es un nodo, podés leer
 sus campos después de que cierre. Atrapa el foco y cierra con Escape.
+
+**confirmTyped**: la confirmación que exige escribir `word` (por defecto
+`borrar`, sin distinguir mayúsculas). Es para lo que borra mucho de una vez:
+el botón queda apagado hasta que la palabra coincide. Resuelve `true`/`false`.
 
 **Palette**: comandos `{ id, label, group, icon, hint, run }`. Match por
 subsecuencia: "rndg" encuentra "Research Digest". Re-registrá cuando cambien

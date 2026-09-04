@@ -397,7 +397,52 @@ const Modal = (() => {
     }).then((v) => v === true);
   }
 
-  return { show, confirm, close };
+  /**
+   * Confirmación que exige escribir una palabra. Es para lo que borra MUCHO de
+   * una vez: un click de más en "Eliminar" se lleva una cosa, acá se va todo.
+   * Escribir la palabra obliga a leer qué se está por hacer, y el botón queda
+   * apagado hasta que coincide (sin distinguir mayúsculas: la fricción es
+   * leer, no acertar el shift).
+   */
+  function confirmTyped({ title, sub, word = 'borrar', confirmLabel = 'Confirmar', danger = true } = {}) {
+    const body = document.createElement('div');
+    body.className = 'ox-field';
+    body.innerHTML = `
+      <label class="ox-field__label"></label>
+      <input class="ox-input ox-input--mono" spellcheck="false" autocomplete="off" autocapitalize="off">`;
+    const input = body.querySelector('input');
+    body.querySelector('label').textContent = `Escribí "${word}" para confirmar`;
+
+    const p = show({
+      title,
+      sub,
+      body,
+      width: 440,
+      actions: [
+        { label: 'Cancelar', value: false },
+        { label: confirmLabel, value: true, variant: danger ? 'danger-solid' : 'primary' },
+      ],
+    });
+
+    /* `show()` deja `open` armado antes de devolver la promesa, así que el
+       botón ya está en el DOM. Es el último del pie: el de confirmar. */
+    const btn = open.anim.querySelector('.ox-modal__foot .ox-btn:last-child');
+    const coincide = () => input.value.trim().toLowerCase() === String(word).toLowerCase();
+    btn.disabled = true;
+    input.addEventListener('input', () => { btn.disabled = !coincide(); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && coincide()) { e.preventDefault(); btn.click(); }
+    });
+
+    /* El foco va al campo, no al primer botón: acá lo primero es escribir.
+       Mismo retraso que el foco por defecto de `show()` y registrado después,
+       así corre después y no hay dos saltos de foco visibles. */
+    setTimeout(() => input.focus(), 60);
+
+    return p.then((v) => v === true);
+  }
+
+  return { show, confirm, confirmTyped, close };
 })();
 
 export { Tooltip, Toast, Menu, Modal };
