@@ -181,6 +181,7 @@ function registrarDominio() {
   handle('recetas:get', conBase((id) => db.recetas.get(id)));
   handle('recetas:list', conBase((opts) => db.recetas.list(opts || {})));
   handle('recetas:remove', conBase((id) => db.recetas.remove(id)));
+  handle('recetas:vaciar', conBase(() => db.recetas.vaciar()));
 
   /* La vista previa NO pasa por acá: el renderer arma la hoja con el mismo
      módulo de plantilla que usa la ventana de impresión. Un viaje de IPC por

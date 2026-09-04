@@ -582,6 +582,13 @@ const recetas = {
     conexion().prepare('DELETE FROM receta WHERE id = ?').run(rid);
     return true;
   },
+
+  /** Borra TODAS las recetas emitidas. Los ítems se van solos por la cascada
+      de la clave foránea. No toca pacientes, catálogo ni órdenes: es el
+      historial de recetas, no la base. Devuelve cuántas se fueron. */
+  vaciar() {
+    return conexion().prepare('DELETE FROM receta').run().changes;
+  },
 };
 
 /* ── Catálogo de estudios ────────────────────────────────────────────────── */

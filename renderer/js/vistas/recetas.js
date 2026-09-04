@@ -361,7 +361,13 @@ export async function vistaRecetas(recetaId = null) {
     sub: lista.length
       ? `${plural(lista.length, 'receta')} ${lista.length === 1 ? 'emitida' : 'emitidas'}`
       : 'Todavía no emitiste ninguna',
-    actions: `<button class="ox-btn ox-btn--primary ox-flashable" id="h-nueva">
+    /* El de borrar todo solo existe cuando hay algo que borrar. Va en fantasma
+       y sin rojo: el rojo aparece recién en la confirmación, que es donde algo
+       se rompe de verdad. */
+    actions: `${lista.length ? `
+              <button class="ox-btn ox-btn--ghost ox-flashable" id="h-vaciar">
+                <i data-icon="trash"></i> Borrar historial</button>` : ''}
+              <button class="ox-btn ox-btn--primary ox-flashable" id="h-nueva">
                 <i data-icon="plus"></i> Nueva receta</button>`,
   }) + `
     <div class="ox-scroll ox-grow ox-scroll--line-bottom">
@@ -380,11 +386,16 @@ export async function vistaRecetas(recetaId = null) {
                     data-tip="Imprimir"><i data-icon="printer"></i></button>
             <button class="ox-iconbtn ox-iconbtn--sm" data-pdf="${esc(r.id)}"
                     data-tip="Guardar PDF"><i data-icon="download"></i></button>
+            <button class="ox-iconbtn ox-iconbtn--sm" data-borrar="${esc(r.id)}"
+                    data-tip="Eliminar"><i data-icon="trash"></i></button>
           </div>
         </div>`).join('')}</div>`}
     </div>`);
 
   document.getElementById('h-nueva').onclick = () => Router.go('receta');
+
+  const elVaciar = document.getElementById('h-vaciar');
+  if (elVaciar) elVaciar.onclick = () => vaciarHistorial(lista.length);
 
   for (const el of document.querySelectorAll('[data-abrir]')) {
     const ver = () => verReceta(el.dataset.abrir);
@@ -411,7 +422,56 @@ export async function vistaRecetas(recetaId = null) {
     }, { errorTitle: 'No se pudo generar el PDF' });
   }
 
+  for (const b of document.querySelectorAll('[data-borrar]')) {
+    /* La fila sale animada y recién después se repinta la lista: si se
+       repintara de una, la receta desaparecería de golpe. */
+    b.onclick = () => borrarReceta(b.dataset.borrar, {
+      antesDeRepintar: (listo) => exit(b.closest('.ox-listitem'), { onDone: listo }),
+    });
+  }
+
   if (recetaId) verReceta(recetaId);
+}
+
+/* ══ Borrar ══════════════════════════════════════════════════════════════════ */
+
+/** Confirma y borra UNA receta. Lo comparten el tacho de la fila y el botón
+    del modal de la receta. Devuelve si se borró. */
+async function borrarReceta(id, { antesDeRepintar = (listo) => listo() } = {}) {
+  const ok = await Modal.confirm({
+    title: 'Eliminar la receta',
+    sub: 'Se borra del historial. Si ya salió impresa, el papel sigue existiendo. No hay vuelta atrás.',
+    confirmLabel: 'Eliminar',
+    danger: true,
+  });
+  if (!ok) return false;
+  const hecho = await attempt(() => rx.recetas.remove(id), { errorTitle: 'No se pudo eliminar' });
+  if (!hecho) return false;
+  Toast.show({ title: 'Receta eliminada', icon: 'trash' });
+  antesDeRepintar(() => Router.refresh());
+  return true;
+}
+
+/** Borra el historial ENTERO. Pide escribir la palabra: acá no se va una
+    receta, se van todas, y un click de más no puede alcanzar. */
+async function vaciarHistorial(cuantas) {
+  const ok = await Modal.confirmTyped({
+    title: 'Borrar todo el historial',
+    sub: `Se borran ${plural(cuantas, 'receta')} ${cuantas === 1 ? 'emitida' : 'emitidas'}. `
+      + 'Los pacientes, el catálogo y las órdenes quedan. Si querés conservarlas, guardá antes '
+      + 'un respaldo desde Ajustes. No hay vuelta atrás.',
+    word: 'borrar',
+    confirmLabel: 'Borrar historial',
+  });
+  if (!ok) return;
+  const n = await attempt(() => rx.recetas.vaciar(), { errorTitle: 'No se pudo borrar el historial' });
+  if (n == null) return;
+  Toast.show({
+    title: 'Historial borrado',
+    text: `${plural(n, 'receta')} ${n === 1 ? 'eliminada' : 'eliminadas'}.`,
+    icon: 'trash',
+  });
+  Router.refresh();
 }
 
 /** Muestra la hoja tal como se emitió, desde la instantánea. */
@@ -446,16 +506,7 @@ async function verReceta(id) {
   });
 
   if (val === 'borrar') {
-    const ok = await Modal.confirm({
-      title: 'Eliminar la receta',
-      sub: 'Se borra del historial. Si ya salió impresa, el papel sigue existiendo. No hay vuelta atrás.',
-      confirmLabel: 'Eliminar',
-      danger: true,
-    });
-    if (!ok) return;
-    await attempt(() => rx.recetas.remove(id));
-    Toast.show({ title: 'Receta eliminada', icon: 'trash' });
-    Router.refresh();
+    await borrarReceta(id);
   } else if (val === 'pdf') {
     await attempt(async () => {
       const res = await rx.recetas.pdf(id);

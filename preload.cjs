@@ -103,6 +103,7 @@ contextBridge.exposeInMainWorld('rx', {
     get: (id) => call('recetas:get', id),
     list: (opts) => call('recetas:list', opts),
     remove: (id) => call('recetas:remove', id),
+    vaciar: () => call('recetas:vaciar'),
     pdf: (id) => call('recetas:pdf', id),
     imprimir: (id) => call('recetas:imprimir', id),
   },

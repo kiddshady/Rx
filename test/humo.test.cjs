@@ -283,6 +283,78 @@ app.whenReady().then(async () => {
              .find(b => b.textContent.trim() === 'Cerrar')?.click()`);
   await sleep(500);
 
+  /* ── 6b. Borrar ───────────────────────────────────────────────────────── */
+  console.log('\n6b. Borrar');
+  /* Una segunda receta, para que quede algo que borrar de a una y algo que
+     borrar en bloque. Sale de la ficha, como la primera. */
+  await click('.ox-navitem[data-view="pacientes"]');
+  await sleep(700);
+  await click('[data-ficha]');
+  await sleep(900);
+  await click('#f-receta');
+  await sleep(900);
+  await escribir('input[data-campo="nombre"][data-i="0"]', 'Clonazepam 0,5 mg');
+  await click('#r-emitir');
+  await sleep(900);
+  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Después')?.click()`);
+  await sleep(1200);
+  ok('hay dos recetas en el historial',
+    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 2);
+  ok('cada fila tiene su tacho',
+    (await js(`document.querySelectorAll('[data-borrar]').length`)) === 2);
+
+  /* De a una: el tacho de la fila pide confirmación y borra. */
+  await click('[data-borrar]');
+  await sleep(700);
+  ok('el tacho pide confirmación',
+    await js(`document.querySelector('.ox-modal')?.textContent.includes('Eliminar la receta')`));
+  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Cancelar')?.click()`);
+  await sleep(600);
+  ok('cancelar no borra nada',
+    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 2);
+  await click('[data-borrar]');
+  await sleep(700);
+  await js(`[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Eliminar')?.click()`);
+  await sleep(1400);
+  ok('confirmar borra esa receta y deja la otra',
+    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 1);
+
+  /* En bloque: el botón existe solo con recetas, y el modal exige escribir la
+     palabra. Se mide que el botón de confirmar esté APAGADO hasta entonces:
+     una confirmación escrita que igual deja apretar no confirma nada. */
+  ok('el botón de borrar historial está', await js(`!!document.getElementById('h-vaciar')`));
+  await click('#h-vaciar');
+  await sleep(700);
+  const cajaVaciar = await caja('.ox-modal');
+  ok('el modal de borrar historial cae dentro de la ventana',
+    !!cajaVaciar && cajaVaciar.y >= 0 && cajaVaciar.x >= 0
+    && cajaVaciar.y + cajaVaciar.h <= H + 1 && cajaVaciar.x + cajaVaciar.w <= W + 1,
+    JSON.stringify(cajaVaciar));
+  const botonVaciar = `[...document.querySelectorAll('.ox-modal__foot .ox-btn')]
+             .find(b => b.textContent.trim() === 'Borrar historial')`;
+  ok('el botón de confirmar arranca apagado', (await js(`${botonVaciar}?.disabled`)) === true);
+  ok('el foco está en el campo de la palabra',
+    await js(`document.activeElement === document.querySelector('.ox-modal input')`));
+  await escribir('.ox-modal input', 'borra');
+  await sleep(200);
+  ok('con la palabra a medias sigue apagado', (await js(`${botonVaciar}?.disabled`)) === true);
+  await escribir('.ox-modal input', 'BORRAR');
+  await sleep(200);
+  ok('con la palabra completa se enciende', (await js(`${botonVaciar}?.disabled`)) === false);
+  await js(`${botonVaciar}?.click()`);
+  await sleep(1400);
+  ok('el historial quedó vacío',
+    (await js(`document.querySelectorAll('[data-abrir]').length`)) === 0
+    && await js(`!!document.querySelector('.ox-empty')`));
+  ok('y el botón de borrar historial se fue con él', !(await js(`!!document.getElementById('h-vaciar')`)));
+  ok('la statusbar dejó de contar recetas de hoy',
+    (await js(`document.getElementById('stat-hoy')?.textContent`)) === '0');
+  ok('el paciente sigue en el rail',
+    (await js(`document.getElementById('cuenta-pacientes')?.textContent`)) === '1');
+
   /* ── 7. Emitir una orden de estudios ──────────────────────────────────── */
   console.log('\n7. Orden');
   await click('.ox-navitem[data-view="pacientes"]');

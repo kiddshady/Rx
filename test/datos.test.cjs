@@ -353,6 +353,30 @@ app.whenReady().then(async () => {
     assert.equal(await llave.recuperarRecordada(), null);
   });
 
+  /* Borrar el historial es la única operación que toca muchas filas de una.
+     Lo que importa no es que borre —eso es un DELETE— sino que borre SOLO
+     recetas: pacientes, órdenes y catálogo tienen que quedar como estaban. */
+  await prueba('vaciar el historial borra todas las recetas y nada más', () => {
+    const p = db.pacientes.save({ apellido_nombre: 'RUIZ, CARLA' });
+    const a = db.recetas.emitir({ paciente_id: p.id, fecha: '2026-08-07', items: [{ nombre: 'Uno' }] });
+    const b = db.recetas.emitir({ paciente_id: p.id, fecha: '2026-08-08', items: [{ nombre: 'Dos' }] });
+    const recetasAntes = db.recetas.list().length;
+    const pacientesAntes = db.pacientes.list().length;
+    const ordenesAntes = db.ordenes.list().length;
+    const medicamentosAntes = db.medicamentos.list().length;
+    assert.ok(recetasAntes >= 3, 'tendría que haber al menos las dos nuevas y la vieja');
+
+    const n = db.recetas.vaciar();
+    assert.equal(n, recetasAntes, 'no devolvió cuántas borró');
+    assert.equal(db.recetas.list().length, 0, 'quedaron recetas');
+    assert.equal(db.recetas.get(a.id), null, 'la receta sigue consultable');
+    assert.equal(db.recetas.get(b.id), null, 'la receta sigue consultable');
+    assert.equal(db.pacientes.list().length, pacientesAntes, 'se llevó pacientes');
+    assert.equal(db.ordenes.list().length, ordenesAntes, 'se llevó órdenes');
+    assert.equal(db.medicamentos.list().length, medicamentosAntes, 'se llevó el catálogo');
+    assert.equal(db.resumen().recetas, 0, 'el resumen sigue contando recetas');
+  });
+
   db.cerrar();
   try { fs.rmSync(carpeta, { recursive: true, force: true }); } catch { /* Windows a veces la tiene tomada */ }
 
