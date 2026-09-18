@@ -36,6 +36,7 @@ const path = require('path');
 const ipc = require('./src/ipc.cjs');
 const store = require('./src/store.cjs');
 const db = require('./src/db.cjs');
+const actualizador = require('./src/actualizador.cjs');
 
 /* Color base de arranque. Tiene que coincidir con --ox-bg de tokens.css.
    Como --ox-bg es oklch y Electron solo entiende hex, el renderer se lo vuelve
@@ -180,6 +181,9 @@ ipcMain.on('win:set-bg', (_e, hex) => {
 app.whenReady().then(async () => {
   ipc.register();
   createWindow(await loadWindowState());
+  /* En desarrollo deja el estado en inactivo; empaquetada consulta GitHub
+     después de que la ventana tuvo tiempo de montar y respirar. */
+  actualizador.iniciar(() => win);
 });
 
 /* Cerrar la base a mano antes de salir. Con WAL, el archivo principal puede

@@ -342,3 +342,20 @@
 .rx-fila--dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .rx-buscador { max-width: 340px; }
+
+/* ── Actualización en la statusbar ───────────────────────────────────────── */
+
+.rx-update {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ox-text-3);
+  cursor: default;
+}
+.rx-update:hover { color: var(--ox-text); }
+.rx-update .ox-icon { width: 12px; height: 12px; }
+.rx-update .ox-meter { width: 72px; }
+.rx-update.is-lista,
+.rx-update.is-lista .ox-statusbar__value { color: var(--ox-accent); }
+.rx-update.is-lista:hover,
+.rx-update.is-lista:hover .ox-statusbar__value { color: var(--ox-text); }

@@ -114,6 +114,11 @@ app.whenReady().then(async () => {
   ok('los <i data-icon> se reemplazaron por SVG',
     !(await js(`!!document.querySelector('i[data-icon]')`)));
   ok('la vista inicial pintó algo', (await js(`document.getElementById('view').children.length`)) > 0);
+  const updDev = await js(`window.rx.actualizacion.estado()`);
+  ok('el puente de actualizaciones responde',
+    !!updDev && typeof updDev.fase === 'string' && typeof updDev.version === 'string', JSON.stringify(updDev));
+  ok('en desarrollo no intenta actualizar',
+    updDev.fase === 'inactivo' && updDev.motivo === 'dev', JSON.stringify(updDev));
 
   /* Cero emojis y cero glifos unicode: todo símbolo tiene que ser un SVG. Se
      buscan emojis y flechas/tildes usadas como ícono. La rayita (—) y el punto
@@ -140,6 +145,10 @@ app.whenReady().then(async () => {
     ok(`"${vista}" ilumina su ítem del rail`,
       await js(`document.querySelector('.ox-navitem[data-view="${vista}"]')?.classList.contains('is-active')`));
   }
+  ok('Ajustes muestra el estado de actualización',
+    await js(`document.getElementById('upd-estado')?.textContent.includes('app instalada')`));
+  ok('Ajustes permite buscar actualizaciones a mano',
+    await js(`!!document.getElementById('btn-buscar-upd')`));
 
   /* ── 4. Alta de un paciente por la UI real ────────────────────────────── */
   console.log('\n4. Paciente');

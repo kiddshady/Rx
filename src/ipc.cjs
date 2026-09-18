@@ -280,12 +280,17 @@ function importarPrototipo(crudo) {
 function register(opciones = {}) {
   alBloquear = opciones.alBloquear || (() => { });
 
+  /* Existe también en desarrollo para que el renderer pueda mostrar por qué
+     está inactivo y los tests validen el puente sin hacer una descarga. */
+  require('./actualizador.cjs').registrarIPC();
+
   handle('app:info', () => ({
     name: app.getName(),
     version: app.getVersion(),
     dataDir: rutas.raiz(),
     electron: process.versions.electron,
     esquema: db.ESQUEMA,
+    repo: 'https://github.com/kiddshady/Rx',
     /* El tope legal viaja al renderer en vez de estar escrito de nuevo en la
        vista: el numero es uno solo y sale de donde se hace cumplir. */
     maxMedicamentos: db.MAX_MEDICAMENTOS,

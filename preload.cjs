@@ -48,6 +48,17 @@ contextBridge.exposeInMainWorld('onyx', {
 
 /* `rx` es el dominio: todo lo clínico. */
 contextBridge.exposeInMainWorld('rx', {
+  actualizacion: {
+    estado: () => call('actualizacion:estado'),
+    buscar: () => call('actualizacion:buscar'),
+    instalar: () => ipcRenderer.send('actualizacion:instalar'),
+    onEstado: (cb) => {
+      const h = (_e, valor) => cb(valor);
+      ipcRenderer.on('actualizacion:estado', h);
+      return () => ipcRenderer.off('actualizacion:estado', h);
+    },
+  },
+
   sesion: {
     estado: () => call('sesion:estado'),
     configurar: (password, recordar) => call('sesion:configurar', password, !!recordar),

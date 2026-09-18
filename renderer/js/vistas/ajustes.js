@@ -5,6 +5,11 @@ import { paint, head, esc, attempt } from '../ui.js';
 import { bindSwitcher } from '../motion.js';
 import { campoFecha, cablearFechas, isoDe } from '../campo-fecha.js';
 import { S } from '../tienda.js';
+import Router from '../router.js';
+import {
+  estadoActualizacion, describirEstado, buscarActualizacion,
+  instalarActualizacion, onActualizacion,
+} from '../actualizacion.js';
 
 const rx = window.rx;
 const onyx = window.onyx;
@@ -128,6 +133,30 @@ export async function vistaAjustes() {
       </div>
 
       <div class="ox-section">
+        <div class="ox-section__head"><div class="ox-section__title">Actualizaciones</div></div>
+        <div class="ox-card"><div class="ox-card__body">
+          <div class="ox-kv">
+            <span class="ox-kv__k">Versión</span>
+            <span class="ox-kv__v ox-mono">${esc(S.info?.version || '—')}</span>
+            <span class="ox-kv__k">Estado</span>
+            <span class="ox-kv__v ox-kv__v--wrap" id="upd-estado">${esc(describirEstado())}</span>
+          </div>
+          <div class="ox-row" style="gap:var(--ox-2);margin-top:var(--ox-4);flex-wrap:wrap">
+            <button class="ox-btn ox-btn--secondary ox-flashable" id="btn-buscar-upd">
+              <i data-icon="retry"></i> Buscar actualizaciones</button>
+            <button class="ox-btn ox-btn--primary ox-flashable" id="btn-instalar-upd" hidden>
+              <i data-icon="download"></i> Reiniciar y actualizar</button>
+            <button class="ox-btn ox-btn--ghost ox-flashable" id="btn-releases">
+              <i data-icon="external"></i> Ver versiones en GitHub</button>
+          </div>
+          <p class="ox-meta" style="margin-top:var(--ox-4);line-height:1.65">
+            La app instalada busca una versión nueva al abrirse y la descarga en segundo plano.
+            Nunca se reinicia sola: cuando esté lista, elegís cuándo aplicarla.
+          </p>
+        </div></div>
+      </div>
+
+      <div class="ox-section">
         <div class="ox-section__head"><div class="ox-section__title">Seguridad</div></div>
         <div class="ox-card"><div class="ox-card__body ox-col" style="gap:var(--ox-4)">
 
@@ -211,6 +240,21 @@ export async function vistaAjustes() {
   bindSwitcher(document.getElementById('a-plantilla'), async (valor) => {
     S.ajustes = await onyx.settings.save({ plantillaPorDefecto: valor });
   });
+
+  /* ── Actualizaciones ── */
+  const pintarActualizacion = (e) => {
+    const texto = document.getElementById('upd-estado');
+    if (texto) texto.textContent = describirEstado(e);
+    const instalar = document.getElementById('btn-instalar-upd');
+    if (instalar) instalar.hidden = e.fase !== 'listo';
+    const buscar = document.getElementById('btn-buscar-upd');
+    if (buscar) buscar.disabled = e.fase === 'buscando' || e.fase === 'descargando';
+  };
+  pintarActualizacion(estadoActualizacion());
+  Router.onLeave(onActualizacion(pintarActualizacion));
+  document.getElementById('btn-buscar-upd').onclick = () => buscarActualizacion();
+  document.getElementById('btn-instalar-upd').onclick = () => instalarActualizacion();
+  document.getElementById('btn-releases').onclick = () => window.open(`${S.info.repo}/releases`);
 
   /* ── Fechas ── */
   cablearFechas(document.getElementById('view'));

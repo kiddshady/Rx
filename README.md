@@ -67,6 +67,7 @@ src/
   db.cjs          La base cifrada: esquema, migraciones y consultas.
   impresion.cjs   printToPDF y la impresora, sobre una ventana oculta.
   ipc.cjs         Qué puede pedir el renderer. TODO pasa por conBase().
+  actualizador.cjs electron-updater contra los releases de GitHub.
   store.cjs       JSON en claro: SOLO preferencias de la interfaz.
 renderer/
   index.html      Shell + la cerradura.
@@ -74,6 +75,7 @@ renderer/
   css/hoja.css    Las hojas. Las cargan la app Y la impresión.
   js/
     hoja.js       Las plantillas clásica y RPE; la orden reutiliza la RPE.
+    actualizacion.js Estado, statusbar, aviso y controles del auto-update.
     desbloqueo.js La cerradura.
     campo-fecha.js Campo de fecha propio, sin el <input type=date> de Chromium.
     tienda.js     Estado compartido y validadores (DNI, CUIL).
@@ -224,7 +226,7 @@ muestra y saca capturas para mirar cómo quedó.
 ## Empaquetar
 
 ```
-npm run build          # → dist/Rx-Setup-0.1.1.exe
+npm run build          # → dist/Rx-Setup-0.1.2.exe
 npm run test:paquete   # y verificarlo, que no es opcional
 ```
 
@@ -259,12 +261,22 @@ Los datos de la app instalada van a `%APPDATA%\Rx`, no al lado del ejecutable:
 esa carpeta es de solo lectura y además una actualización la reemplaza entera.
 `RX_DATA` manda sobre todo, y sirve para correr una copia contra datos falsos.
 
+### Actualizaciones
+
+La aplicación instalada consulta al arrancar la última release estable de
+[`kiddshady/Rx`](https://github.com/kiddshady/Rx). Si encuentra una versión
+nueva, descarga el instalador en segundo plano y avisa en la barra de estado.
+Nunca reinicia sola: se aplica al tocar **Reiniciar y actualizar** o al cerrar
+la app después de que terminó la descarga.
+
+En desarrollo el actualizador queda inactivo porque no existe `app-update.yml`.
+El paquete sí lo lleva y `test:paquete` comprueba que apunta al repo correcto,
+que `latest.yml` coincide con la versión y que existe el `.blockmap`.
+
 ---
 
 ## Lo que falta
 
-- **Auto-update.** No hay `electron-updater`. Si se quiere, es el mismo flujo
-  que las otras apps (releases de GitHub), pero implica publicar el binario.
 - **Vademécum.** El catálogo es la lista corta de lo que la doctora receta
   seguido, cargada a mano. Importar un vademécum real es otra cosa.
 - **La agenda de turnos** quedó descartada, no pendiente.

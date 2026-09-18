@@ -9,9 +9,10 @@
    la carpeta de datos pasa a ser de solo lectura. Nada de eso lo agarra un
    test del fuente.
 
-   Las dos preguntas que contesta:
+   Las tres preguntas que contesta:
      1. ¿El .node que se ENVÍA descifra de verdad? (no el de node_modules)
      2. ¿El .exe arranca, abre ventana y puede escribir en su carpeta de datos?
+     3. ¿El actualizador lleva feed, blockmap, destino y puente funcionales?
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const { app } = require('electron');
@@ -26,6 +27,9 @@ app.on('window-all-closed', () => { });
 
 const RAIZ = path.join(__dirname, '..');
 const SALIDA = path.join(RAIZ, 'dist');
+const pkg = require(path.join(RAIZ, 'package.json'));
+const VERSION = pkg.version;
+const DESEMPACADO_APP = path.join(SALIDA, 'win-unpacked');
 const EXE = path.join(SALIDA, 'win-unpacked', 'Rx.exe');
 const DESEMPACADO = path.join(SALIDA, 'win-unpacked', 'resources', 'app.asar.unpacked');
 
@@ -74,10 +78,28 @@ app.whenReady().then(async () => {
   console.log('\npaquete\n');
 
   await prueba('el instalador existe y no está vacío', () => {
-    const inst = fs.readdirSync(SALIDA).filter((f) => /^Rx-Setup-.*\.exe$/.test(f));
-    assert.ok(inst.length === 1, `esperaba un instalador, encontré ${inst.length}`);
-    const mb = fs.statSync(path.join(SALIDA, inst[0])).size / 1024 / 1024;
+    const inst = path.join(SALIDA, `Rx-Setup-${VERSION}.exe`);
+    assert.ok(fs.existsSync(inst), `no está ${path.basename(inst)}`);
+    const mb = fs.statSync(inst).size / 1024 / 1024;
     assert.ok(mb > 40, `el instalador salió sospechosamente chico (${mb.toFixed(1)} MB)`);
+  });
+
+  await prueba('latest.yml y el blockmap apuntan a este instalador', () => {
+    const yml = fs.readFileSync(path.join(SALIDA, 'latest.yml'), 'utf8');
+    assert.ok(yml.includes(`version: ${VERSION}`), `latest.yml no dice version: ${VERSION}`);
+    assert.ok(yml.includes(`Rx-Setup-${VERSION}.exe`), 'latest.yml no nombra al instalador');
+    assert.ok(/sha512:/.test(yml), 'latest.yml no trae sha512');
+    assert.ok(fs.existsSync(path.join(SALIDA, `Rx-Setup-${VERSION}.exe.blockmap`)), 'falta el .blockmap');
+  });
+
+  await prueba('la app lleva app-update.yml apuntando al repo de Rx', () => {
+    const f = path.join(DESEMPACADO_APP, 'resources', 'app-update.yml');
+    assert.ok(fs.existsSync(f), 'no está resources/app-update.yml');
+    const yml = fs.readFileSync(f, 'utf8');
+    assert.ok(yml.includes('provider: github'), 'app-update.yml no usa GitHub');
+    assert.ok(yml.includes(`owner: ${pkg.build.publish.owner}`)
+      && yml.includes(`repo: ${pkg.build.publish.repo}`),
+    `app-update.yml no apunta a ${pkg.build.publish.owner}/${pkg.build.publish.repo}`);
   });
 
   await prueba('el .node quedó FUERA del asar', () => {
@@ -128,7 +150,7 @@ app.whenReady().then(async () => {
 
   await prueba('el .exe arranca, abre ventana y escribe en su carpeta de datos', async () => {
     assert.ok(fs.existsSync(EXE), 'no está Rx.exe');
-    hijo = spawn(EXE, [`--remote-debugging-port=${PUERTO}`], {
+    hijo = spawn(EXE, [`--remote-debugging-port=${PUERTO}`, `--user-data-dir=${datos}`], {
       env: { ...process.env, RX_DATA: datos },
       detached: false, stdio: 'ignore',
     });
@@ -172,6 +194,16 @@ app.whenReady().then(async () => {
     assert.ok(v.iconosSVG, 'los <i data-icon> no se reemplazaron: los módulos ES no cargaron');
     assert.ok(/Crear y entrar|Desbloquear/.test(v.boton),
       `el botón de la cerradura dice "${v.boton}"`);
+  });
+
+  await prueba('el actualizador empaquetado arrancó y reporta esta versión', async () => {
+    const e = await cdpEvaluar(PUERTO, `window.rx.actualizacion.estado()`);
+    assert.ok(e && typeof e.fase === 'string', `estado raro: ${JSON.stringify(e)}`);
+    assert.ok(['buscando', 'al-dia', 'disponible', 'descargando', 'listo', 'error'].includes(e.fase),
+      `fase inesperada: ${e.fase}`);
+    assert.equal(e.version, VERSION, `la app dice ser ${e.version}`);
+    assert.notEqual(e.motivo, 'dev', 'la app empaquetada cree que está en desarrollo');
+    console.log(`        (el actualizador dijo: ${e.fase}${e.error ? ' · ' + e.error : ''})`);
   });
 
   if (hijo && hijo.exitCode === null) { try { hijo.kill(); } catch { /* ya murió */ } }

@@ -15,6 +15,7 @@ import { initClickFlash, initScrollFades } from './motion.js';
 import { colorToken, attempt } from './ui.js';
 import { pedirClave } from './desbloqueo.js';
 import { S, refrescar, pintarChrome } from './tienda.js';
+import { initActualizacion } from './actualizacion.js';
 
 import { vistaTablero } from './vistas/tablero.js';
 import { vistaPacientes, vistaFicha } from './vistas/pacientes.js';
@@ -164,6 +165,7 @@ async function boot() {
   cablearShell();
   cablearActividad();
   sincronizarColor();
+  initActualizacion();
 
   Router.define({
     tablero:      { view: vistaTablero },

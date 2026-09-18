@@ -1,7 +1,7 @@
 {
   "name": "rx",
   "productName": "Rx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Historia clínica, recetas y órdenes de estudios para consultorio. Datos cifrados en disco, firma manuscrita.",
   "main": "main.cjs",
   "author": "Francisco Pavez",
@@ -11,18 +11,19 @@
     "dev": "electron . --dev",
     "test": "node test/tokens.test.mjs && node test/store.test.mjs && node test/format.test.mjs",
     "test:datos": "electron test/datos.test.cjs",
-    "rebuild:nativos": "prebuild-install -C node_modules/better-sqlite3-multiple-ciphers --runtime=electron --target=40.10.2 --dist-url=https://electronjs.org/headers",
+    "rebuild:nativos": "prebuild-install -C node_modules/better-sqlite3-multiple-ciphers --runtime=electron --target=40.10.6 --dist-url=https://electronjs.org/headers",
     "humo": "electron test/humo.test.cjs",
     "icon": "electron build/make-icon.cjs",
     "build": "electron-builder --win --publish never",
     "test:paquete": "electron test/empaquetado.test.cjs"
   },
   "devDependencies": {
-    "electron": "40.10.2",
+    "electron": "40.10.6",
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "better-sqlite3-multiple-ciphers": "^12.11.1"
+    "better-sqlite3-multiple-ciphers": "^12.11.1",
+    "electron-updater": "^6.8.9"
   },
   "build": {
     "appId": "com.kiddshady.rx",
