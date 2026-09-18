@@ -322,21 +322,35 @@ app.whenReady().then(async () => {
     await js(`document.getElementById('o-paciente-txt')?.textContent.includes('GÓMEZ')`));
   ok('también avisa de la alergia antes de pedir',
     await js(`!!document.querySelector('#o-alergias .rx-alergias')`));
+  ok('la orden no tiene campo de observaciones',
+    !(await js(`!!document.getElementById('o-observaciones')`)));
 
   await escribir('input[data-campo="nombre"][data-i="0"]', 'Hemograma completo');
   await escribir('input[data-campo="aclaracion"][data-i="0"]', 'en ayunas');
   await escribir('#o-diagnostico', 'Astenia');
   await sleep(400);
 
-  /* Lo que separa la orden de la receta en el papel: va UNA hoja y sin sello de
-     duplicado. Si alguna vez salen dos, es que se coló el juego de la receta. */
+  /* La orden usa la MISMA plantilla RPE, pero va en UNA hoja y sin sello de
+     duplicado. Los estudios reemplazan a los medicamentos, uno por renglón. */
   const hojasOrden = await js(`document.querySelectorAll('#o-previa .rx-hoja').length`);
   ok('la orden se dibuja en una sola hoja', hojasOrden === 1, `hojas=${hojasOrden}`);
+  ok('la orden usa la plantilla RPE',
+    await js(`document.querySelector('#o-previa .rx-hoja')?.classList.contains('rx-hoja--rpe')`));
   ok('y no lleva sello de duplicado',
     !(await js(`document.getElementById('o-previa').textContent.includes('Duplicado')`)));
   ok('la previa muestra el estudio tipeado',
     await js(`document.getElementById('o-previa').textContent.includes('Hemograma completo')`));
-  ok('y lo numera', await js(`!!document.querySelector('#o-previa .estudios li')`));
+  ok('cada estudio ocupa un renglón de la plantilla',
+    (await js(`document.querySelectorAll('#o-previa .item.estudio').length`)) === 1);
+  ok('y no aparece numerado',
+    !(await js(`!!document.querySelector('#o-previa ol, #o-previa li')`)));
+  ok('la hoja no muestra observaciones',
+    !(await js(`document.getElementById('o-previa').textContent.includes('Observaciones')`)));
+  ok('no hay líneas intermedias en el pedido', await js(`(() => {
+    const datos = document.querySelector('#o-previa .datos-orden');
+    return !document.querySelector('#o-previa .separador')
+      && (!datos || parseFloat(getComputedStyle(datos).borderTopWidth) === 0);
+  })()`));
   ok('el rótulo del panel dice que entra en una hoja',
     (await js(`document.getElementById('o-hojas')?.textContent`)) === 'una hoja');
   const contenidaOrden = await previaContenida('o-previa');

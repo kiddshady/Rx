@@ -161,7 +161,7 @@ app.whenReady().then(async () => {
     const p = db.pacientes.list()[0];
     const o = db.ordenes.emitir({
       paciente_id: p.id, fecha: '2026-08-07',
-      diagnostico: 'Astenia', observaciones: 'Traer estudios previos',
+      diagnostico: 'Astenia',
       items: [
         { nombre: 'Hemograma completo', aclaracion: 'en ayunas' },
         { nombre: 'TSH' },
@@ -171,7 +171,8 @@ app.whenReady().then(async () => {
     assert.equal(o.items.length, 3);
     assert.equal(o.items[0].nombre, 'Hemograma completo');
     assert.equal(o.items[0].aclaracion, 'en ayunas');
-    /* El orden en que se pidieron es parte del pedido: la hoja los numera. */
+    /* El orden en que se pidieron es parte del pedido: cada uno sale en su
+       propio renglón, aunque la hoja ya no los numere. */
     assert.equal(o.items[2].nombre, 'Rx de tórax frente', 'los estudios salieron desordenados');
     assert.equal(o.diagnostico, 'Astenia');
     assert.ok(o.snapshot.medico, 'la orden se guardó sin instantánea del profesional');

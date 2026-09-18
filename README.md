@@ -73,7 +73,7 @@ renderer/
   imprimir.html   El documento que se imprime. Sin nada inline (ver CSP).
   css/hoja.css    Las hojas. Las cargan la app Y la impresión.
   js/
-    hoja.js       Las plantillas: clásica, RPE y orden. Las usan las dos.
+    hoja.js       Las plantillas clásica y RPE; la orden reutiliza la RPE.
     desbloqueo.js La cerradura.
     campo-fecha.js Campo de fecha propio, sin el <input type=date> de Chromium.
     tienda.js     Estado compartido y validadores (DNI, CUIL).
@@ -122,19 +122,20 @@ impresora.
 La orden de estudios **no** tiene tope: pedir diez prácticas de laboratorio es
 normal, y ahí el único límite es el físico de la hoja.
 
-### La orden de estudios es la receta con otro cuerpo
+### La orden de estudios usa la plantilla RPE
 
 Mismo circuito completo: paciente, hoja en vivo al lado, emitir, congelar la
 instantánea, salir a papel o a PDF, y quedar en el historial y en la ficha. Lo
-que cambia es el medio de la hoja —el listado numerado de estudios en vez del
-`Rp/`— y que sale en **una** sola hoja: el duplicado de la receta existe
+que cambia es el medio de la hoja: donde la receta lleva los medicamentos, la
+orden pone cada estudio en su propio renglón, **sin numerarlos**. Sale en **una**
+sola hoja: el duplicado de la receta existe
 porque se lo queda la farmacia, y la orden se la queda el laboratorio y listo.
 
-Por eso comparte de verdad, no "parecido": el encabezado del paciente y el pie
-de firma son las mismas funciones de `hoja.js`, y las reglas de CSS que hereda
-llevan el selector duplicado en vez del valor copiado. Dos copias del mismo
-milímetro se desincronizan el día que una se toca — y acá eso significa dos
-papeles que se ven distinto.
+Por eso comparte de verdad, no "parecido": las cajas RPE del paciente y la
+cobertura, los renglones y el pie de firma salen de las mismas funciones y
+reglas de `hoja.js` y `hoja.css`. Dentro del pedido hay aire, no líneas. Dos
+copias del mismo milímetro se desincronizan el día que una se toca — y acá eso
+significa dos papeles que se ven distinto.
 
 El diagnóstico va **uno** para toda la orden y no uno por estudio: en el papel
 encabeza el pedido entero, y repetirlo en cada renglón sería ruido en una hoja
@@ -223,7 +224,7 @@ muestra y saca capturas para mirar cómo quedó.
 ## Empaquetar
 
 ```
-npm run build          # → dist/Rx-Setup-0.1.0.exe
+npm run build          # → dist/Rx-Setup-0.1.1.exe
 npm run test:paquete   # y verificarlo, que no es opcional
 ```
 

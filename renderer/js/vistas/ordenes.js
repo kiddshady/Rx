@@ -49,7 +49,6 @@ export async function vistaOrden(pacienteId = null) {
     paciente: null,
     fecha: hoyISO(),
     diagnostico: '',
-    observaciones: '',
     items: [itemVacio()],
   };
   if (pacienteId) E.paciente = await rx.pacientes.get(pacienteId);
@@ -94,11 +93,6 @@ export async function vistaOrden(pacienteId = null) {
           <div class="ox-col" id="o-items" style="gap:var(--ox-3)"></div>
         </div>
 
-        <div class="ox-field">
-          <label class="ox-field__label" for="o-observaciones">Observaciones</label>
-          <input class="ox-input" id="o-observaciones" spellcheck="false"
-                 placeholder="Lo que el laboratorio o el centro tenga que saber">
-        </div>
       </div>
 
       <div class="rx-receta__previa">
@@ -129,7 +123,6 @@ export async function vistaOrden(pacienteId = null) {
       items: E.items.filter((i) => i.nombre.trim()),
       fecha: E.fecha,
       diagnostico: E.diagnostico,
-      observaciones: E.observaciones,
     };
   }
 
@@ -259,10 +252,6 @@ export async function vistaOrden(pacienteId = null) {
     E.diagnostico = e.target.value;
     pintarPrevia();
   });
-  document.getElementById('o-observaciones').addEventListener('input', (e) => {
-    E.observaciones = e.target.value;
-    pintarPrevia();
-  });
 
   document.getElementById('o-agregar').onclick = () => {
     E.items.push(itemVacio());
@@ -279,7 +268,6 @@ export async function vistaOrden(pacienteId = null) {
       paciente_id: E.paciente.id,
       fecha: E.fecha,
       diagnostico: E.diagnostico,
-      observaciones: E.observaciones,
       items,
       desdeCatalogo: items.map((i) => i.desde).filter(Boolean),
     }), { errorTitle: 'No se pudo emitir la orden' });
@@ -461,7 +449,6 @@ async function verOrden(id) {
     items: o.items,
     fecha: o.fecha,
     diagnostico: o.diagnostico,
-    observaciones: o.observaciones,
   };
 
   const caja = document.createElement('div');

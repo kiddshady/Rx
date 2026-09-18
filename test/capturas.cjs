@@ -85,7 +85,6 @@ app.whenReady().then(async () => {
   db.ordenes.emitir({
     paciente_id: gomez.id, fecha: '2026-07-30',
     diagnostico: 'F32 — Episodio depresivo. Control previo al ajuste de dosis.',
-    observaciones: 'Traer los resultados a la próxima consulta.',
     items: [
       { nombre: 'Hemograma completo', aclaracion: 'Con ayuno de 8 horas' },
       { nombre: 'Hepatograma', aclaracion: 'Con ayuno de 8 horas' },
@@ -178,7 +177,6 @@ app.whenReady().then(async () => {
     document.getElementById('o-agregar').click();
     poner('input[data-campo="nombre"][data-i="2"]', 'TSH y T4 libre');
     poner('#o-diagnostico', 'F32 — Control previo al ajuste de dosis');
-    poner('#o-observaciones', 'Traer los resultados a la próxima consulta');
   })()`);
   await sleep(800); await foto('8-orden');
 

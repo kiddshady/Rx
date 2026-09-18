@@ -11,9 +11,9 @@
    que salió en marzo.
 
    Son tres hojas: la receta clásica, la RPE y la orden de estudios. La orden
-   es la clásica con el listado de estudios donde va el Rp/, y por eso comparte
-   con ella el encabezado del paciente y el pie de firma — literalmente las
-   mismas funciones, no una copia parecida.
+   usa la misma plantilla RPE y cambia solamente el cuerpo: estudios en vez de
+   medicamentos, sin numeración y sin columna de envases. Encabezado, cobertura
+   y pie son literalmente las mismas funciones, no una copia parecida.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const CRUDO = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -121,12 +121,8 @@ function clasica(r, duplicado) {
 
 /* ── RPE ─────────────────────────────────────────────────────────────────── */
 
-function rpe(r, duplicado) {
-  const p = r.paciente || {};
-  const items = r.items || [];
-
-  let h = `<section class="rx-hoja rx-hoja--rpe">`;
-
+function cabeceraRpe(p) {
+  let h = '';
   h += `<div class="caja-paciente">`;
   if (p.apellido_nombre) {
     h += `<div class="nombre">Paciente: ${esc(p.apellido_nombre)}</div>`;
@@ -152,6 +148,24 @@ function rpe(r, duplicado) {
     h += `</div>`;
   }
 
+  return h;
+}
+
+function pieRpe(fechaDoc) {
+  let h = `<div class="hueco-firma"></div>`;
+  h += `<div class="pie"><div>Emitida: ${esc(fechaLarga(fechaDoc) || '—')}</div>`;
+  h += `<div class="firma"><div class="linea"></div><div>Firma y sello</div></div>`;
+  h += `</div>`;
+  return h;
+}
+
+function rpe(r, duplicado) {
+  const p = r.paciente || {};
+  const items = r.items || [];
+
+  let h = `<section class="rx-hoja rx-hoja--rpe">`;
+  h += cabeceraRpe(p);
+
   h += `<div class="encabezado-rp"><div>Rp/</div>`;
   if (duplicado) h += `<div class="marca-dup">DUPLICADO</div>`;
   h += `<div>Envases</div></div>`;
@@ -167,48 +181,43 @@ function rpe(r, duplicado) {
     if (i < items.length - 1) h += `<hr class="separador">`;
   });
 
-  h += `<div class="hueco-firma"></div>`;
-  h += `<div class="pie"><div>Emitida: ${esc(fechaLarga(r.fecha) || '—')}</div>`;
-  h += `<div class="firma"><div class="linea"></div><div>Firma y sello</div></div>`;
-  h += `</div></section>`;
+  h += pieRpe(r.fecha);
+  h += `</section>`;
   return h;
 }
 
 /* ── Orden de estudios ───────────────────────────────────────────────────── */
 
-/* Mismo encabezado y mismo pie que la clásica; en el medio, el listado de lo
-   que se pide en vez del Rp/. El diagnóstico y las observaciones van UNA vez,
-   al final de la lista y no por renglón: es un solo pedido, no cinco. */
+/* Es la plantilla RPE, con estudios en vez de medicamentos. Cada estudio ocupa
+   un renglón propio y no lleva número: el orden visual alcanza para separar el
+   pedido sin convertirlo en una lista numerada. El diagnóstico va UNA vez
+   porque corresponde a la orden entera. */
 function orden(o) {
   const p = o.paciente || {};
-  const m = o.medico || {};
   const items = o.items || [];
 
-  let h = `<section class="rx-hoja rx-hoja--orden">`;
-  h += `<div class="cuerpo">` + bloquePaciente(p, o.fecha);
+  let h = `<section class="rx-hoja rx-hoja--rpe rx-hoja--orden">`;
+  h += cabeceraRpe(p);
+  h += `<div class="encabezado-rp"><div>Solicito:</div></div>`;
 
-  h += `<div class="titulo">Solicito:</div>`;
-  h += `<ol class="estudios">`;
-  for (const it of items) {
-    h += `<li><span class="nombre">${esc(it.nombre || '—')}</span>`;
-    if (it.aclaracion) h += `<span class="aclaracion">${esc(it.aclaracion)}</span>`;
-    h += `</li>`;
-  }
-  h += `</ol>`;
+  items.forEach((it) => {
+    h += `<div class="item estudio"><div class="principal">`;
+    h += `<div class="nombre">${esc(it.nombre || '—')}</div>`;
+    if (it.aclaracion) h += `<div class="aclaracion">${esc(it.aclaracion)}</div>`;
+    h += `</div></div>`;
+  });
+
   /* Solo se ve en la vista previa: emitir una orden sin estudios no se puede.
-     Sin esto, el título quedaría colgado arriba de la nada mientras se escribe
-     el primero, y la hoja parecería rota en vez de vacía. */
+     Mientras se escribe el primero, evita que el cuerpo parezca roto. */
   if (items.length === 0) h += `<div class="sin-datos">— sin estudios —</div>`;
 
   if (o.diagnostico) {
-    h += `<div class="dato"><span class="rotulo">Diagnóstico:</span> ${esc(o.diagnostico)}</div>`;
+    h += `<div class="datos-orden">`;
+    h += `<div class="diagnostico"><span class="rotulo">Diagnóstico:</span> ${esc(o.diagnostico)}</div>`;
+    h += `</div>`;
   }
-  if (o.observaciones) {
-    h += `<div class="dato"><span class="rotulo">Observaciones:</span> ${esc(o.observaciones)}</div>`;
-  }
-  h += `</div>`;
 
-  h += pieFirmado(m, o.fecha);
+  h += pieRpe(o.fecha);
   h += `</section>`;
   return h;
 }
@@ -216,13 +225,13 @@ function orden(o) {
 /**
  * Arma UNA hoja.
  *
- * El tipo manda antes que la plantilla: una orden no tiene clásica ni RPE.
+ * El tipo manda antes que la plantilla: una orden usa siempre la RPE.
  * Sin `tipo`, es una receta — es lo que había antes de que existiera la orden
  * y lo que sigue llegando desde los snapshots viejos.
  *
  * @param {object} d  receta {paciente, medico, items, fecha, plantilla, numero}
  *                    u orden {tipo:'orden', paciente, medico, items, fecha,
- *                             diagnostico, observaciones}
+ *                             diagnostico}
  * @param {{duplicado?: boolean}} opts
  */
 export function hoja(d, { duplicado = false } = {}) {

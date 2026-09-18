@@ -54,7 +54,6 @@ function datosDeOrden(o) {
     items: (o.items || []).map((it) => ({ nombre: it.nombre, aclaracion: it.aclaracion })),
     fecha: o.fecha,
     diagnostico: o.diagnostico,
-    observaciones: o.observaciones,
   };
 }
 
