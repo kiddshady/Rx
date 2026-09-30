@@ -88,6 +88,31 @@ app.whenReady().then(async () => {
     !!cajaCaja && cajaCaja.x >= 0 && cajaCaja.y >= 0 && cajaCaja.x + cajaCaja.w <= W,
     JSON.stringify(cajaCaja));
 
+  /* El checkbox de recordar es el `.ox-check` de Onyx con SU tilde: el `check`
+     del banco, que controls.css achica a 11px y dibuja con stroke-dashoffset.
+     Un <svg> suelto sin `.ox-icon` salía grueso y aparecía de golpe. Se lo
+     prende, se mide el tilde a mitad de camino y dibujado, y se lo apaga. */
+  const tilde = await js(`(async () => {
+    const b = document.getElementById('recordar');
+    if (!b) return null;
+    const svg = b.querySelector('svg');
+    const off = () => parseFloat(getComputedStyle(svg.querySelector('path')).strokeDashoffset);
+    const antes = off();
+    b.click();
+    await new Promise((r) => setTimeout(r, 60));
+    const medio = off();
+    await new Promise((r) => setTimeout(r, 500));
+    const r = { esIcono: svg.classList.contains('ox-icon'), ancho: svg.getBoundingClientRect().width,
+      antes, medio, despues: off(), marcado: b.getAttribute('aria-checked') };
+    b.click();
+    return r;
+  })()`);
+  ok('el recordar lleva el tilde del banco de Onyx, a 11px',
+    tilde?.esIcono && Math.round(tilde.ancho) === 11, JSON.stringify(tilde));
+  ok('el tilde se dibuja de a poco al marcarlo',
+    tilde && tilde.antes > 15 && tilde.medio > 0 && tilde.medio < tilde.antes && tilde.despues === 0 && tilde.marcado === 'true',
+    JSON.stringify(tilde));
+
   // Contraseñas que no coinciden: tiene que rebotar y NO abrir.
   await escribir('#clave', CLAVE);
   await escribir('#clave2', 'otra-cosa-distinta');

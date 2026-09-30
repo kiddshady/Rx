@@ -28,12 +28,14 @@ const MARCA = '<svg class="rx-cerradura__marca" viewBox="0 0 16 16" aria-hidden=
 let host = null;
 let mostrando = false;
 
-/** Un `.ox-check` de Onyx, que es un botón y no un input nativo. */
+/** Un `.ox-check` de Onyx, que es un botón y no un input nativo. El tilde tiene
+    que ser el `check` del banco: controls.css lo estila y lo dibuja a través de
+    `.ox-check .ox-icon`, y un <svg> suelto sin esa clase salía grueso y de golpe. */
 function check(id, etiqueta, marcado) {
   return `<label class="ox-row" style="gap:var(--ox-2);cursor:pointer;align-items:center">
     <button type="button" class="ox-check${marcado ? ' is-on' : ''}" id="${id}"
             role="checkbox" aria-checked="${marcado}">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.4"/></svg>
+      ${Icons.svg('check')}
     </button>
     <span style="font-size:var(--ox-fs-13);color:var(--ox-text-2)">${esc(etiqueta)}</span>
   </label>`;
