@@ -37,6 +37,15 @@ const ESQUEMA = 2;
 function id() { return crypto.randomBytes(8).toString('hex'); }
 function ahora() { return new Date().toISOString(); }
 
+/** La fecha de hoy en la hora de la PC, como hoyISO() del renderer: las fechas
+    de las recetas se guardan así. toISOString() da la de UTC, que en Argentina
+    ya es mañana desde las 21. */
+function hoyLocal() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /** Texto normalizado para buscar: sin acentos, sin puntuación, en minúsculas.
     SQLite compara ASCII sin distinguir mayúsculas, pero "GÓMEZ" y "gomez" le
     son dos cosas distintas. Se guarda ya normalizado y se busca contra eso. */
@@ -730,7 +739,7 @@ const ordenes = {
 
 function resumen() {
   const c = conexion();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   return {
     pacientes: c.prepare('SELECT count(*) AS n FROM paciente WHERE archivado = 0').get().n,
     recetas: c.prepare('SELECT count(*) AS n FROM receta').get().n,
@@ -742,7 +751,7 @@ function resumen() {
 }
 
 module.exports = {
-  abrir, cerrar, abierta, recifrar, respaldar, normalizar,
+  abrir, cerrar, abierta, recifrar, respaldar, normalizar, hoyLocal,
   medico, pacientes, evoluciones, medicamentos, recetas, estudios, ordenes, resumen,
   ESQUEMA, MAX_MEDICAMENTOS,
 };

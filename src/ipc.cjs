@@ -203,7 +203,7 @@ function registrarDominio() {
 
 function registrarRespaldo() {
   handle('respaldo:exportar', conBase(async () => {
-    const sello = new Date().toISOString().slice(0, 10);
+    const sello = db.hoyLocal();
     const res = await dialog.showSaveDialog(ventana(), {
       title: 'Guardar respaldo cifrado',
       defaultPath: `rx-respaldo-${sello}.db`,
