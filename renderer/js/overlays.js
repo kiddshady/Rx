@@ -126,10 +126,10 @@ const Toast = (() => {
   }
 
   /**
-   * Toast.show({ title, text, tone: 'default'|'error', duration, icon })
+   * Toast.show({ title, text, tone: 'default'|'error', duration, icon, action })
    * duration:0 → se queda hasta que lo cierren.
    */
-  function show({ title, text = '', tone = 'default', duration = 4200, icon } = {}) {
+  function show({ title, text = '', tone = 'default', duration = 4200, icon, action } = {}) {
     const el = document.createElement('div');
     el.className = `ox-toast${tone === 'error' ? ' ox-toast--error' : ''}`;
     el.style.setProperty('--life', `${duration}ms`);
@@ -140,6 +140,7 @@ const Toast = (() => {
       <div class="ox-toast__main">
         <div class="ox-toast__title"></div>
         ${text ? '<div class="ox-toast__text"></div>' : ''}
+        ${action ? '<button class="ox-btn ox-btn--secondary ox-btn--sm ox-toast__action"></button>' : ''}
       </div>
       <button class="ox-iconbtn ox-iconbtn--sm" data-close>${Icons.svg('close')}</button>
       ${duration ? '<span class="ox-toast__life"></span>' : ''}`;
@@ -152,6 +153,14 @@ const Toast = (() => {
 
     const close = () => exit(el, { fallback: 260 });
     el.querySelector('[data-close]').addEventListener('click', close);
+    // action: { label, run } → un botón adentro del toast (Deshacer, Ver…). Al
+    // apretarlo el toast se cierra y corre `run`. Es lo que permite que una
+    // acción no pida permiso antes y aun así tenga vuelta atrás.
+    if (action) {
+      const btn = el.querySelector('.ox-toast__action');
+      btn.textContent = action.label;
+      btn.addEventListener('click', () => { close(); action.run?.(); });
+    }
 
     if (duration) {
       let timer = setTimeout(close, duration);
@@ -167,7 +176,7 @@ const Toast = (() => {
         timer = setTimeout(close, Math.max(900, left));
       });
     }
-    return { close };
+    return { close, el };
   }
 
   return { show, error: (title, text) => show({ title, text, tone: 'error', duration: 7000 }) };

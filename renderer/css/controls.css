@@ -138,6 +138,17 @@
 .ox-input.is-invalid,
 .ox-textarea.is-invalid { box-shadow: inset 0 0 0 1px var(--ox-danger-ring); }
 .ox-textarea { min-height: 88px; resize: vertical; line-height: var(--ox-lh); }
+/* El agarrador de estirar, dibujado. Con `resize` Chromium pinta el suyo en la
+   esquina —dos rayitas grises de sistema— y era lo único nativo que quedaba a
+   la vista en un campo. Dos trazos en diagonal con el color de los tokens, así
+   se re-tinta con el resto; la esquina sigue estirando igual. */
+.ox-textarea::-webkit-resizer {
+  background:
+    linear-gradient(135deg,
+      transparent 0 44%, var(--ox-text-4) 44% 54%,
+      transparent 54% 72%, var(--ox-text-4) 72% 82%, transparent 82%)
+    no-repeat right 2px bottom 2px / 8px 8px;
+}
 .ox-input--mono, .ox-textarea--mono { font-family: var(--ox-mono); font-size: 12px; }
 
 /* Campo con ícono adelante (búsqueda). */
@@ -283,13 +294,31 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .ox-check.is-on .ox-icon { stroke-dashoffset: 0; }
 
 /* ── Segmentado ───────────────────────────────────────────────────────────────
-   La cápsula seleccionada se DESLIZA entre opciones (--seg = índice activo).
-   Que viaje en vez de saltar es lo que lo hace sentir físico. */
+   La cápsula seleccionada se DESLIZA entre opciones: --seg-x y --seg-w son la
+   posición y el ancho REALES de la opción activa (los pone syncSegmented, en
+   motion.js). Que viaje en vez de saltar es lo que lo hace sentir físico.
+
+   `width: max-content` es lo que hace que las opciones midan lo mismo también
+   adentro de una celda de tabla. El `1fr` reparte parejo solo cuando el ancho
+   del control es indefinido (en un flex, por ejemplo); una celda con
+   `.ox-td--tight` le da un ancho definido igual a su mínimo y no queda espacio
+   libre que repartir: con dos opciones de distinto largo salían de 71 y 50px,
+   y la cápsula —que asumía mitades iguales— caía 10px corrida de su texto.
+
+   `max-width: 100%` es el contrapeso del max-content, y salió de Quire: en un
+   inspector de 288px útiles, tres opciones ("Junto al original", "Descargas",
+   "Carpeta…") a max-content medían 317 y el control se salía por debajo del
+   `overflow: hidden` del panel. Acotado al contenedor, el `1fr` reparte lo que
+   hay y las columnas quedan desparejas solo cuando no entra otra cosa —y la
+   cápsula, que mide en vez de suponer, las sigue igual. En la celda de tabla
+   no cambia nada: la celda ya mide lo que el control pide. */
 .ox-segmented {
   position: relative;
   display: inline-grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
+  width: max-content;
+  max-width: 100%;
   padding: 2px;
   border-radius: var(--ox-r-sm);
   background: var(--ox-sunken);
@@ -299,13 +328,13 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   content: '';
   position: absolute;
   top: 2px;
-  left: 2px;
+  left: 0;
   width: var(--seg-w, 0px);
   height: calc(100% - 4px);
   border-radius: var(--ox-r-xs);
   background: var(--ox-s3);
   box-shadow: var(--ox-e1);
-  transform: translateX(calc(var(--seg, 0) * var(--seg-w, 0px)));
+  transform: translateX(var(--seg-x, 2px));
   transition: transform var(--ox-t-3) var(--ox-ease), width var(--ox-t-3) var(--ox-ease);
 }
 .ox-segmented__opt {
@@ -326,6 +355,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   cursor: default;
   transition: color var(--ox-t-2) var(--ox-ease-soft);
 }
+/* El anillo va hacia adentro, con las esquinas de la cápsula: el de base.css
+   sale 3.5px por fuera y acá hay 2px de carril, así que se pisaba con el
+   canto del control y con las opciones vecinas. */
+.ox-segmented__opt:focus-visible { box-shadow: inset 0 0 0 1.5px var(--ox-ring); border-radius: var(--ox-r-xs); }
 .ox-segmented__opt:hover { color: var(--ox-text-2); }
 .ox-segmented__opt.is-active { color: var(--ox-text); }
 .ox-segmented__opt .ox-icon { width: 12px; height: 12px; }

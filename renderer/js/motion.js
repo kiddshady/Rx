@@ -37,6 +37,102 @@ export function exit(el, { fallback = 400, onDone } = {}) {
   });
 }
 
+/* ── swap: reescribir un bloque sin cortes ──────────────────────────────────
+   Un `innerHTML` a secas es un corte: lo viejo desaparece en el cuadro en que
+   llega lo nuevo. Salió en Chem Engine, donde un auditor de transiciones lo
+   encontró en todas partes, y cada caso pedía algo distinto:
+
+   · APARECE (vacío → algo): lo nuevo entra con un fundido.
+   · SE VA (algo → vacío): cada hijo termina de irse antes de salir del DOM.
+     Hijo por hijo y no en una caja: si el contenedor es una grilla, una caja
+     en el medio desarmaría las filas mientras se esfuman.
+   · CAMBIA DE VALORES (algo → algo): se reescribe en el lugar y SIN volver a
+     animar. Una ficha que se recalcula seguido destellaba en cada cambio.
+   · CAMBIA DE ESTADO (`relevo`: pista → cargando → resultado, un estado por
+     otro): lo viejo se esfuma en un calco ENCIMA, en el mismo lugar, y lo
+     nuevo asoma cuando lo viejo ya va por un tercio. El calco copia el acomodo
+     del contenedor para que lo viejo no se mueva mientras se va.
+
+   Con el mismo HTML de la última vez no hace nada: se puede llamar en cada
+   refresco sin reemplazar nodos que no cambiaron. Y si lo de antes todavía
+   estaba ENTRANDO, lo nuevo sigue desde el mismo punto del fundido en vez de
+   cortarlo (dos recálculos seguidos hacían saltar el bloque a opaco). */
+const ultimo = new WeakMap();
+
+export function swap(el, html, { relevo = false } = {}) {
+  if (!el) return;
+  if (ultimo.get(el) === html) return;
+  ultimo.set(el, html);
+
+  const viejos = [...el.childNodes].filter((n) => !(n.nodeType === 1 && n.classList.contains('ox-swap-out')));
+  const antes = viejos.some((n) => n.nodeType === 1 || n.textContent.trim());
+  const despues = html.trim() !== '';
+  if (!antes && !despues) return;
+
+  // Lo que todavía se estaba yendo EN el flujo se corta: si no, durante el
+  // fundido habría dos juegos de filas.
+  if (despues) el.querySelectorAll(':scope > .ox-swap-out:not(.ox-swap-out--over)').forEach((n) => n.remove());
+
+  // Solo las entradas: lo que gira para siempre (un spinner) no se toca.
+  const finitas = () => el.getAnimations({ subtree: true })
+    .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+
+  if (antes && despues && !relevo) {
+    const enCurso = finitas().filter((a) => a.playState === 'running').map((a) => a.currentTime);
+    const t = enCurso.length ? Math.max(...enCurso) : null;
+    el.innerHTML = html;
+    if (t != null) for (const n of el.children) entrar(n);
+    for (const a of finitas()) { if (t != null) a.currentTime = t; else a.cancel(); }
+    return;
+  }
+
+  if (antes && !despues) {
+    for (const n of viejos) {
+      if (n.nodeType !== 1) { n.remove(); continue; }
+      n.classList.remove('ox-swap-in', 'is-after');
+      n.classList.add('ox-swap-out');
+      n.inert = true;
+      exit(n, { fallback: 220 });
+    }
+    return;
+  }
+
+  if (antes) {
+    const calco = document.createElement('div');
+    calco.className = 'ox-swap-out ox-swap-out--over';
+    calco.inert = true;
+    calco.setAttribute('aria-hidden', 'true');
+    calco.append(...viejos);
+    for (const x of calco.querySelectorAll('[id]')) x.removeAttribute('id');
+    if (getComputedStyle(el).position === 'static') el.classList.add('ox-swap-host');
+    el.prepend(calco);
+    // Mover un nodo le reinicia las animaciones CSS: lo que tenía su propia
+    // entrada volvería a entrar desde cero adentro del calco que se va.
+    for (const a of calco.getAnimations({ subtree: true })) {
+      if (a.effect?.getTiming().iterations !== Infinity) a.finish();
+    }
+    exit(calco, { fallback: 220 });
+  }
+
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  for (const n of tpl.content.children) entrar(n, antes);
+  el.append(tpl.content);
+}
+
+function entrar(n, tarde = false) {
+  n.classList.add('ox-swap-in');
+  if (tarde) n.classList.add('is-after');
+  // Terminada la entrada se apaga con una clase y no con style.animation: un
+  // fill `both` retenido deja la opacidad clavada, y un inline le ganaría
+  // después a la regla de salida.
+  n.addEventListener('animationend', function fin(ev) {
+    if (ev.target !== n) return;
+    n.removeEventListener('animationend', fin);
+    n.classList.add('is-settled');
+  });
+}
+
 /** Escalona los hijos de un contenedor seteando --i (el CSS lo usa de delay). */
 export function stagger(container, selector = ':scope > *', step = 1) {
   container.querySelectorAll(selector).forEach((el, i) => {
@@ -69,10 +165,20 @@ export function scrollFade(el) {
     const slack = el.scrollHeight - el.clientHeight;
     if (slack <= 1) {                       // no hay nada que recortar
       el.classList.add('is-top', 'is-bottom');
+      el.classList.remove('is-stuck-head');
       return;
     }
     el.classList.toggle('is-top', el.scrollTop <= 1);
     el.classList.toggle('is-bottom', el.scrollTop >= slack - 1);
+    // Un encabezado de tabla clavado contra el borde: su tabla ya empezó arriba
+    // del borde y todavía no terminó. Ahí la línea es el límite y el fade sobra.
+    const top = el.getBoundingClientRect().top;
+    const stuck = [...el.querySelectorAll('.ox-table')].some((t) => {
+      if (t.closest('.ox-scroll') !== el) return false;
+      const r = t.getBoundingClientRect();
+      return r.top < top - 1 && r.bottom > top;
+    });
+    el.classList.toggle('is-stuck-head', stuck);
   };
 
   el.addEventListener('scroll', update, { passive: true });
@@ -91,13 +197,16 @@ export function initScrollFades(root = document) {
    La cápsula del segmentado y el subrayado de los tabs se DESLIZAN entre
    opciones. Que viajen en vez de saltar es lo que los hace sentir físicos. */
 
+/* La cápsula copia la geometría REAL de la opción activa, igual que el
+   subrayado de los tabs. Antes se calculaba como ancho/n asumiendo opciones
+   iguales, y en una celda de tabla no lo son: la cápsula caía corrida y el
+   texto parecía descentrado. offsetLeft es relativo al segmentado (position:
+   relative), así que ya incluye su padding. */
 export function syncSegmented(seg) {
-  const opts = [...seg.querySelectorAll('.ox-segmented__opt')];
-  if (!opts.length) return;
-  const active = Math.max(0, opts.findIndex((o) => o.classList.contains('is-active')));
-  const w = (seg.clientWidth - 4) / opts.length;
-  seg.style.setProperty('--seg-w', `${w}px`);
-  seg.style.setProperty('--seg', String(active));
+  const active = seg.querySelector('.ox-segmented__opt.is-active') || seg.querySelector('.ox-segmented__opt');
+  if (!active) return;
+  seg.style.setProperty('--seg-x', `${active.offsetLeft}px`);
+  seg.style.setProperty('--seg-w', `${active.offsetWidth}px`);
 }
 
 export function syncTabs(tabs) {
