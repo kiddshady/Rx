@@ -9,7 +9,6 @@
 import { Icons } from './icons.js';
 import './iconos-rx.js';
 import { Tooltip, Toast, Menu, Modal } from './overlays.js';
-import Palette from './palette.js';
 import Router from './router.js';
 import { initClickFlash, initScrollFades } from './motion.js';
 import { colorToken, attempt } from './ui.js';
@@ -40,7 +39,6 @@ function cablearShell() {
     btnMax.innerHTML = Icons.svg(max ? 'winRestore' : 'winMax');
   });
 
-  document.getElementById('btn-palette').onclick = () => Palette.toggle();
   document.getElementById('btn-nueva-receta').onclick = () => Router.go('receta');
   document.getElementById('btn-bloquear').onclick = () => rx.sesion.bloquear();
 
@@ -77,30 +75,6 @@ function cablearActividad() {
   }
 }
 
-/* ══ Comandos ════════════════════════════════════════════════════════════════ */
-
-function registrarComandos() {
-  Palette.clear();
-  Palette.register([
-    { id: 'nueva-receta', label: 'Nueva receta', group: 'Recetas', icon: 'plus', run: () => Router.go('receta') },
-    { id: 'recetas', label: 'Historial de recetas', group: 'Recetas', icon: 'file', run: () => Router.go('recetas') },
-    { id: 'nueva-orden', label: 'Nueva orden de estudios', group: 'Órdenes', icon: 'plus', run: () => Router.go('orden') },
-    { id: 'ordenes', label: 'Historial de órdenes', group: 'Órdenes', icon: 'orden', run: () => Router.go('ordenes') },
-    { id: 'pacientes', label: 'Pacientes', group: 'Ir a', icon: 'users', run: () => Router.go('pacientes') },
-    { id: 'medicamentos', label: 'Medicamentos', group: 'Ir a', icon: 'pill', run: () => Router.go('medicamentos') },
-    { id: 'estudios', label: 'Estudios', group: 'Ir a', icon: 'estudio', run: () => Router.go('estudios') },
-    { id: 'ajustes', label: 'Ajustes', group: 'Ir a', icon: 'settings', run: () => Router.go('ajustes') },
-    { id: 'bloquear', label: 'Bloquear la app', group: 'Seguridad', icon: 'lock', run: () => rx.sesion.bloquear() },
-    {
-      id: 'respaldo', label: 'Guardar un respaldo cifrado', group: 'Seguridad', icon: 'save',
-      run: () => attempt(async () => {
-        const r = await rx.respaldo.exportar();
-        if (!r.cancelado) Toast.show({ title: 'Respaldo guardado', text: r.ruta, icon: 'save' });
-      }, { errorTitle: 'No se pudo guardar el respaldo' }),
-    },
-  ]);
-}
-
 /* ══ Sesión ══════════════════════════════════════════════════════════════════ */
 
 /** No resuelve hasta que la base quede abierta. */
@@ -121,7 +95,6 @@ async function cargarTodo() {
   S.info = info;
   S.ajustes = ajustes;
   S.medico = medico;
-  document.getElementById('stat-version').textContent = `v${info.version}`;
   await refrescar();
 }
 
@@ -132,10 +105,11 @@ function cablearBloqueo() {
        detrás, un dato de paciente seguiría en pantalla —y en el DOM— con la
        app supuestamente bloqueada. */
     document.getElementById('view').innerHTML = '';
+    // Y el calco de un relevo en curso (router.js), que es la vista anterior entera.
+    document.querySelectorAll('.ox-main--saliente').forEach((el) => el.remove());
     Menu.hide?.();
     await desbloquear(motivo);
     await cargarTodo();
-    registrarComandos();
     Router.refresh();
   });
 }
@@ -159,7 +133,6 @@ function quitarSplash() {
 async function boot() {
   Icons.mount(document);
   Tooltip.init();
-  Palette.init();
   initClickFlash();
   initScrollFades();
   cablearShell();
@@ -187,7 +160,6 @@ async function boot() {
 
   await desbloquear('inicio');
   await cargarTodo();
-  registrarComandos();
   cablearBloqueo();
 
   Router.go(S.ajustes.ultimaVista || 'tablero');
