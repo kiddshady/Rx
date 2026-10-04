@@ -10,6 +10,7 @@ import { Icons } from './icons.js';
 import { Toast } from './overlays.js';
 import Router from './router.js';
 import { esc } from './ui.js';
+import { swap, deslizarAncho } from './motion.js';
 import { fmtBytes, relTime } from './format.js';
 
 const rx = window.rx;
@@ -56,11 +57,16 @@ function pintarStatusbar() {
     listo: `Reiniciar y actualizar a ${estado.nueva}`,
   }[f];
   el.classList.toggle('is-lista', f === 'listo');
-  el.innerHTML = `${Icons.svg(f === 'listo' ? 'retry' : 'download')}`
+  /* El rótulo cambia por relevo y el ancho del ítem viaja, en vez de saltar y
+     empujar lo de al lado. El avance de la descarga NO va en el HTML: con él
+     adentro, cada evento de progreso relevaría el aviso entero. Se escribe en
+     la barra que ya está. */
+  const html = `${Icons.svg(f === 'listo' ? 'retry' : 'download')}`
     + `<span class="ox-statusbar__value">${esc(texto)}</span>`
-    + (f === 'descargando'
-      ? `<span class="ox-meter" style="--ox-pct:${Math.round(estado.progreso || 0)}%"><span class="ox-meter__fill"></span></span>`
-      : '');
+    + (f === 'descargando' ? '<span class="ox-meter"><span class="ox-meter__fill"></span></span>' : '');
+  deslizarAncho(el, () => swap(el, html, { relevo: true }));
+  // `:scope >`: durante el relevo, la barra de antes sigue en el calco que se va.
+  el.querySelector(':scope > .ox-meter')?.style.setProperty('--ox-pct', `${Math.round(estado.progreso || 0)}%`);
   el.dataset.tip = f === 'listo'
     ? 'Cierra Rx, instala la versión nueva y la vuelve a abrir'
     : f === 'descargando'

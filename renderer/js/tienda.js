@@ -13,6 +13,8 @@
    preocuparse.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+import { numero } from './motion.js';
+
 export const S = {
   info: null,
   ajustes: {},
@@ -27,11 +29,11 @@ export async function refrescar() {
   return S.resumen;
 }
 
+/* Por numero(): una cifra que cambia destella en su lugar. Los contadores nacen
+   vacíos en el HTML, así el primer dato no cuenta como cambio y no destella
+   mientras se va el splash. */
 export function pintarChrome() {
-  const set = (id, v) => {
-    const el = document.getElementById(id);
-    if (el && el.textContent !== String(v)) el.textContent = String(v);
-  };
+  const set = (id, v) => numero(document.getElementById(id), v);
   set('cuenta-pacientes', S.resumen.pacientes);
   set('cuenta-recetas', S.resumen.recetas);
   set('cuenta-ordenes', S.resumen.ordenes);

@@ -454,6 +454,37 @@ app.whenReady().then(async () => {
   ok('pero la previa avisa que no va a entrar',
     (await js(`document.getElementById('o-hojas')?.textContent`) || '').includes('segunda hoja'));
 
+  /* Quitar una fila: las filas van por reconcile(), con una clave por ítem.
+     La de abajo tiene que VIAJAR a su lugar (no saltar), quedar con su valor,
+     y lo que se escriba en ella después tiene que ir a SU ítem, no al que
+     ocupaba ese índice antes. Con índices guardados al crear la fila, eso
+     último escribía en el estudio equivocado. */
+  // Arriba de todo: agregar quince filas dejó el formulario scrolleado al
+  // final, y lo que viaja fuera de la vista reconcile() no lo anima.
+  const scrollAntes = await js(`(() => { const s = document.getElementById('o-items').closest('.ox-scroll');
+    const y = s?.scrollTop; s?.scrollTo(0, 0); return y; })()`);
+  await sleep(200);
+  const viajaba = await js(`(() => {
+    document.querySelector('.rx-item [data-quitar]').click();
+    const segunda = document.querySelector('#o-items > .rx-item:not([data-state="closing"])');
+    const anims = segunda.getAnimations().map((a) => (a.effect?.getKeyframes?.()[0]?.transform || a.animationName || '?'));
+    return { viaja: anims.some((t) => String(t).includes('translate')), anims, top: segunda.getBoundingClientRect().top };
+  })()`);
+  ok('al quitar una fila, la de abajo viaja a su lugar', viajaba.viaja, JSON.stringify({ ...viajaba, scrollAntes }));
+  await sleep(600);
+  const filas = await js(`document.querySelectorAll('#o-items > .rx-item:not([data-state="closing"])').length`);
+  ok('quedan catorce filas', filas === 14, `filas=${filas}`);
+  ok('y la primera es la que era segunda',
+    await js(`document.querySelector('input[data-campo="nombre"][data-i="0"]')?.value`) === 'Estudio de prueba número 2');
+  ok('la previa ya no muestra la que se quitó',
+    !(await js(`/número 1(?!\\d)/.test(document.getElementById('o-previa').textContent)`)));
+  await escribir('input[data-campo="nombre"][data-i="0"]', 'Ecografía abdominal');
+  await sleep(300);
+  const previaTrasQuitar = await js(`document.getElementById('o-previa').textContent`);
+  ok('lo que se escribe en la fila corrida va a su estudio',
+    previaTrasQuitar.includes('Ecografía abdominal') && !/número 2(?!\d)/.test(previaTrasQuitar)
+      && previaTrasQuitar.includes('número 3'));
+
   /* ── 7b. Borrar ───────────────────────────────────────────────────────── */
   console.log('\n7b. Borrar');
   /* Va después del chequeo de los subtítulos a propósito: ese mira las vistas

@@ -2,7 +2,7 @@
 
 import { Modal, Toast } from '../overlays.js';
 import { paint, head, esc, attempt } from '../ui.js';
-import { bindSwitcher } from '../motion.js';
+import { bindSwitcher, frase } from '../motion.js';
 import { campoFecha, cablearFechas, isoDe } from '../campo-fecha.js';
 import { S } from '../tienda.js';
 import Router from '../router.js';
@@ -141,10 +141,10 @@ export async function vistaAjustes() {
             <span class="ox-kv__k">Estado</span>
             <span class="ox-kv__v ox-kv__v--wrap" id="upd-estado">${esc(describirEstado())}</span>
           </div>
-          <div class="ox-row" style="gap:var(--ox-2);margin-top:var(--ox-4);flex-wrap:wrap">
+          <div class="ox-row" style="gap:var(--ox-2);--ox-plegable-gap:var(--ox-2);margin-top:var(--ox-4);flex-wrap:wrap">
             <button class="ox-btn ox-btn--secondary ox-flashable" id="btn-buscar-upd">
               <i data-icon="retry"></i> Buscar actualizaciones</button>
-            <button class="ox-btn ox-btn--primary ox-flashable" id="btn-instalar-upd" hidden>
+            <button class="ox-btn ox-btn--primary ox-flashable ox-plegable--ancho" id="btn-instalar-upd" hidden>
               <i data-icon="download"></i> Reiniciar y actualizar</button>
             <button class="ox-btn ox-btn--ghost ox-flashable" id="btn-releases">
               <i data-icon="external"></i> Ver versiones en GitHub</button>
@@ -244,7 +244,8 @@ export async function vistaAjustes() {
   /* ── Actualizaciones ── */
   const pintarActualizacion = (e) => {
     const texto = document.getElementById('upd-estado');
-    if (texto) texto.textContent = describirEstado(e);
+    // frase(): si cambia solo el porcentaje destella; si cambia la frase, relevo.
+    if (texto) frase(texto, esc(describirEstado(e)));
     const instalar = document.getElementById('btn-instalar-upd');
     if (instalar) instalar.hidden = e.fase !== 'listo';
     const buscar = document.getElementById('btn-buscar-upd');

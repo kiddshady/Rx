@@ -4,7 +4,7 @@ import { Modal, Toast, Menu } from '../overlays.js';
 import { Icons } from '../icons.js';
 import Router from '../router.js';
 import { paint, head, esc, empty, attempt } from '../ui.js';
-import { exit, bindSwitcher } from '../motion.js';
+import { exit, bindSwitcher, reconcile, swap } from '../motion.js';
 import { campoFecha, cablearFechas } from '../campo-fecha.js';
 import { S, fecha, hoyISO, edad } from '../tienda.js';
 import { plural } from '../format.js';
@@ -155,20 +155,23 @@ export async function vistaReceta(pacienteId = null) {
 
   function pintarPrevia() {
     const d = datosHoja();
-    elPrevia.innerHTML =
+    // swap() en vez de innerHTML: con la misma hoja de la última vez no hace nada.
+    swap(elPrevia,
       `<div class="rx-previa__papel">${hoja(d, { duplicado: false })}</div>` +
-      `<div class="rx-previa__papel">${hoja(d, { duplicado: true })}</div>`;
+      `<div class="rx-previa__papel">${hoja(d, { duplicado: true })}</div>`);
   }
 
   function pintarAlergias() {
     const a = E.paciente?.alergias;
-    if (!a) { elAlergias.innerHTML = ''; return; }
+    /* Por swap(): el aviso aparece y se va fundiéndose al cambiar de paciente,
+       en vez de saltar de un cuadro al otro. */
+    if (!a) { swap(elAlergias, ''); return; }
     /* Antes de recetar, esto tiene que estar a la vista. Es el único lugar de
        la app donde el rojo no significa "falló algo". */
-    elAlergias.innerHTML = `<div class="rx-alergias">
+    swap(elAlergias, `<div class="rx-alergias">
       <i data-icon="cruz"></i>
       <div><div class="rx-alergias__rotulo">Alergias</div>
-      <div>${esc(a)}</div></div></div>`;
+      <div>${esc(a)}</div></div></div>`);
     /* `paint()` monta los íconos una sola vez, al pintar la vista. Todo lo que
        se inyecte después tiene que montar los suyos o queda un hueco. */
     Icons.mount(elAlergias);
@@ -183,65 +186,89 @@ export async function vistaReceta(pacienteId = null) {
     elLimite.classList.toggle('is-visible', lleno);
   }
 
+  /* Cada ítem lleva una clave propia mientras dura la edición, para que
+     reconcile() sepa qué fila es cuál: al quitar una, las de abajo viajan a su
+     lugar en vez de saltar, y la que se va sale desde donde estaba. Va en un
+     WeakMap y no en el ítem porque los ítems se mandan tal cual a emitir() y
+     la clave terminaría en la instantánea. */
+  const claves = new WeakMap();
+  let ultimaClave = 0;
+  const clave = (it) => {
+    if (!claves.has(it)) claves.set(it, `i${++ultimaClave}`);
+    return claves.get(it);
+  };
+  /* Los manejadores buscan su ítem por la clave de la fila, no por un índice
+     guardado al crearla: la fila sobrevive a que se quite la de arriba. */
+  const itemDe = (el) => E.items.find((it) => clave(it) === el.closest('.rx-item')?.dataset.key);
+
+  /* La estructura de una fila no cambia nunca: lo único que puede quedar
+     desfasado son los valores (cargados del catálogo) y la posición. Se ponen
+     en el lugar; reemplazar la fila le sacaría el foco a quien está escribiendo. */
+  function ponerFila(el, { it, i }) {
+    el.dataset.item = i;
+    for (const inp of el.querySelectorAll('[data-campo]')) {
+      inp.dataset.i = i;
+      const v = String(it[inp.dataset.campo] ?? '');
+      if (inp.value !== v) inp.value = v;
+    }
+  }
+
   function pintarItems() {
-    elItems.innerHTML = E.items.map(filaItem).join('');
-    Icons.mount(elItems);
-    cablearItems();
+    reconcile(elItems, E.items.map((it, i) => ({ key: clave(it), html: filaItem(it, i), it, i })), {
+      created: cablearFila,
+      update: ponerFila,
+    });
     pintarLimite();
     pintarPrevia();
   }
 
   /* ── Cableado ───────────────────────────────────────────────────────────── */
 
-  function cablearItems() {
-    for (const inp of elItems.querySelectorAll('[data-campo]')) {
+  function cablearFila(el) {
+    Icons.mount(el);
+    for (const inp of el.querySelectorAll('[data-campo]')) {
       inp.addEventListener('input', () => {
-        const i = Number(inp.dataset.i);
+        const it = itemDe(inp);
+        if (!it) return;
         const campo = inp.dataset.campo;
-        E.items[i][campo] = campo === 'envases'
+        it[campo] = campo === 'envases'
           ? Math.max(1, Number(inp.value) || 1)
           : inp.value;
         pintarPrevia();
       });
     }
 
-    for (const b of elItems.querySelectorAll('[data-quitar]')) {
-      b.onclick = () => {
-        const i = Number(b.dataset.quitar);
-        if (E.items.length === 1) {
-          E.items = [itemVacio()];
-          pintarItems();
-          return;
-        }
-        /* Sale animado y recién después se repinta: si se quitara del array y
-           se repintara de una, la fila desaparecería de golpe. */
-        exit(b.closest('.rx-item'), {
-          onDone: () => { E.items.splice(i, 1); pintarItems(); },
-        });
-      };
-    }
+    el.querySelector('[data-quitar]').onclick = () => {
+      const it = itemDe(el);
+      if (!it) return;
+      /* La última no se va: en su lugar entra una vacía. Con un ítem nuevo
+         (otra clave) la llena sale y la vacía entra, en vez de borrarse los
+         campos de un cuadro al otro. */
+      E.items = E.items.length === 1 ? [itemVacio()] : E.items.filter((x) => x !== it);
+      pintarItems();
+    };
 
-    for (const b of elItems.querySelectorAll('[data-catalogo]')) {
-      b.onclick = (ev) => {
-        if (catalogo.length === 0) {
-          Toast.show({ title: 'El catálogo está vacío', text: 'Cargalo desde Medicamentos.', icon: 'pill' });
-          return;
-        }
-        const i = Number(b.dataset.catalogo);
-        Menu.show(ev.currentTarget, catalogo.slice(0, 40).map((m) => ({
-          label: m.nombre,
-          icon: 'pill',
-          onSelect: () => {
-            E.items[i] = {
-              nombre: m.nombre, marca: m.marca, dosis: m.dosis,
-              envases: m.envases || 1, diagnostico: m.diagnostico,
-              indicaciones: m.indicaciones, desde: m.id,
-            };
-            pintarItems();
-          },
-        })), { align: 'end' });
-      };
-    }
+    el.querySelector('[data-catalogo]').onclick = (ev) => {
+      if (catalogo.length === 0) {
+        Toast.show({ title: 'El catálogo está vacío', text: 'Cargalo desde Medicamentos.', icon: 'pill' });
+        return;
+      }
+      Menu.show(ev.currentTarget, catalogo.slice(0, 40).map((m) => ({
+        label: m.nombre,
+        icon: 'pill',
+        onSelect: () => {
+          const it = itemDe(el);
+          if (!it) return;
+          // Sobre el mismo objeto: la fila sigue siendo la misma y cambian sus valores.
+          Object.assign(it, {
+            nombre: m.nombre, marca: m.marca, dosis: m.dosis,
+            envases: m.envases || 1, diagnostico: m.diagnostico,
+            indicaciones: m.indicaciones, desde: m.id,
+          });
+          pintarItems();
+        },
+      })), { align: 'end' });
+    };
   }
 
   document.getElementById('r-paciente').onclick = (ev) => {
@@ -286,9 +313,11 @@ export async function vistaReceta(pacienteId = null) {
 
   elAgregar.onclick = () => {
     if (E.items.length >= MAX) return;   // el botón ya está apagado; por las dudas
-    E.items.push(itemVacio());
+    const nuevo = itemVacio();
+    E.items.push(nuevo);
     pintarItems();
-    elItems.lastElementChild?.querySelector('input')?.focus();
+    // Por su clave: la última fila del DOM puede ser una que todavía se está yendo.
+    elItems.querySelector(`[data-key="${clave(nuevo)}"] input`)?.focus();
   };
 
   document.getElementById('r-emitir').onclick = async () => {

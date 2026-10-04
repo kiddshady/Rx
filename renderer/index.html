@@ -98,13 +98,13 @@
             <i data-icon="home"></i> Tablero
           </button>
           <button class="ox-navitem" data-view="pacientes">
-            <i data-icon="users"></i> Pacientes <span class="ox-navitem__count" id="cuenta-pacientes">0</span>
+            <i data-icon="users"></i> Pacientes <span class="ox-navitem__count" id="cuenta-pacientes"></span>
           </button>
           <button class="ox-navitem" data-view="recetas">
-            <i data-icon="file"></i> Recetas <span class="ox-navitem__count" id="cuenta-recetas">0</span>
+            <i data-icon="file"></i> Recetas <span class="ox-navitem__count" id="cuenta-recetas"></span>
           </button>
           <button class="ox-navitem" data-view="ordenes">
-            <i data-icon="orden"></i> Órdenes <span class="ox-navitem__count" id="cuenta-ordenes">0</span>
+            <i data-icon="orden"></i> Órdenes <span class="ox-navitem__count" id="cuenta-ordenes"></span>
           </button>
         </div>
 
@@ -141,12 +141,12 @@
   <!-- ── Statusbar ───────────────────────────────────────────────────────── -->
   <footer class="ox-statusbar">
     <div class="ox-statusbar__item" data-tip="Recetas emitidas hoy" data-tip-side="top">
-      <i data-icon="file"></i> <span class="ox-statusbar__value ox-num" id="stat-hoy">0</span> hoy
+      <i data-icon="file"></i> <span class="ox-statusbar__value ox-num" id="stat-hoy"></span> hoy
     </div>
     <div class="ox-statusbar__item" id="stat-cifrado" data-tip="La base está cifrada en disco" data-tip-side="top">
       <i data-icon="lock"></i> <span class="ox-statusbar__value">Cifrada</span>
     </div>
-    <button type="button" class="ox-statusbar__item rx-update" id="stat-update"
+    <button type="button" class="ox-statusbar__item ox-plegable--ancho rx-update" id="stat-update"
             data-tip-side="top" hidden></button>
     <div class="ox-spacer"></div>
   </footer>

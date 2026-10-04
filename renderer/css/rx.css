@@ -225,13 +225,8 @@
   from { opacity: 0; transform: translateY(-6px) }
   to   { opacity: 1; transform: none }
 }
-.rx-item[data-state="closing"] {
-  animation: rx-item-sale var(--ox-t-2) var(--ox-ease-in) both;
-}
-@keyframes rx-item-sale {
-  from { opacity: 1; transform: none }
-  to   { opacity: 0; transform: translateY(-6px) }
-}
+/* La salida de una fila la hace reconcile() (vistas/recetas.js y ordenes.js):
+   sale desde donde estaba, fuera del flujo, y las de abajo viajan a su lugar. */
 
 .rx-item__campos { display: flex; flex-direction: column; gap: var(--ox-2); min-width: 0; }
 .rx-item__grid {
